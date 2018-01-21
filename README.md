@@ -94,7 +94,9 @@ Applications should validate their input JSON by checking the structure. Tools s
 
 Sometimes there are competing vocabularies that encode the same data. If you think you can still use the data, you can transform the data to fit the vocabulary/structure you use. This is sometimes called "munging" the data.
 
-In this example, you have two "RSVP" vocabularies. The `'bobs-rsvps'` schema looks like:
+For example, suppose you have two "RSVP" vocabularies.
+
+The `'bobs-rsvps'` schema looks like:
 
 ```
 {"rsvp": {"requested": true, "deadlineDate": "..."}}
@@ -106,7 +108,7 @@ While the `'carlas-rsvps'` schema looks like:
 {"rsvpIsRequested": true, "rsvpDeadline": "..."}
 ```
 
-If we have an input JSON that identifies its RSVP data as using the `'carlas-rsvps'` vocab, then we can convert from `'carlas-rsvps'` to `'bobs-rsvps'` by iterating over each attribute in the `'carlas-rsvps'` vocabulary and converting:
+We can convert from `'carlas-rsvps'` to `'bobs-rsvps'` by iterating over each attribute in the `'carlas-rsvps'` vocabulary and converting:
 
 ```js
 obj.rsvp = obj.rsvp || {}
@@ -155,9 +157,7 @@ And here is what the output object would look like:
 
 ### Fatal ambiguity
 
-Ambiguous interpretations of data can sometimes result in critical mistakes. This is rare, but problematic enough that it should be actively avoided.
-
-Avoiding fatal ambiguity is one of the primary purposes of JSON-LZ.
+Ambiguous interpretations of data can sometimes result in critical mistakes. This is rare, but problematic enough that it should be actively avoided. Avoiding fatal ambiguity is one of the primary purposes of JSON-LZ.
 
 #### An example of "fatal ambiguity"
 
@@ -284,76 +284,6 @@ This path-language is intended to be so simple that an implementation can be wri
 ### jlz.checkSupport()
 
 TODO document more
-
-```js
-var doc = {
-  '@schema':[
-    {
-      name: 'bll-fritter',
-      required: true,
-      fallback: 'discard'
-    },
-    {
-      name: 'https://www.w3.org/ns/activitystreams',
-      attrs: ['@type', 'content', 'inReplyTo', 'published']
-    }
-  ],
-  // ...
-}
-
-jlz.checkSupport(doc, ['bll-fritter', 'https://www.w3.org/ns/activitystreams'])
-/* => {
-  passes: true,
-  supported: [
-    {
-      name: 'bll-fritter',
-      required: true,
-      fallback: 'discard'
-    },
-    {
-      name: 'https://www.w3.org/ns/activitystreams',
-      attrs: ['@type', 'content', 'inReplyTo', 'published']
-    }
-  ],
-  unsupported: []
-} */
-
-jlz.checkSupport(doc, ['bll-fritter', 'something-else'])
-/* => {
-  passes: true,
-  supported: [
-    {
-      name: 'bll-fritter',
-      required: true,
-      fallback: 'discard'
-    }
-  ],
-  unsupported: [
-    {
-      name: 'https://www.w3.org/ns/activitystreams',
-      attrs: ['@type', 'content', 'inReplyTo', 'published']
-    }
-  ]
-} */
-
-jlz.checkSupport(doc, ['something-else'])
-/* => {
-  passes: false,
-  fallback: 'discard',
-  supported: [],
-  unsupported: [
-    {
-      name: 'bll-fritter',
-      required: true,
-      fallback: 'discard'
-    },
-    {
-      name: 'https://www.w3.org/ns/activitystreams',
-      attrs: ['@type', 'content', 'inReplyTo', 'published']
-    }
-  ]
-} */
-```
 
 ### jlz.getSchemaFor()
 
