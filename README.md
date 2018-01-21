@@ -1,103 +1,18 @@
 # JSON LZ
 
-Pronounced "JSON Lazy." An alternative to JSON-LD that's designed to work how developers work.
-
-Provides toolsets to:
+Pronounced "JSON Lazy." A toolset to:
 
  - Identify the schemas of JSON documents,
  - Transform between schema-vocabularies, and
  - Detect "fatal ambiguities" and fall back to smart defaults.
 
-**Status:** Work in progress. See [DESIGN.md](DESIGN.md).
+**Status:** Work in progress.
 
 ## Background
 
 JSON-LZ was created as part of [this discussion in the Beaker community](https://github.com/beakerbrowser/beaker/issues/820) between members of the p2p Web, microdata, and W3C Social WG communities. This toolset was largely inspired by [Robin Berjon](https://twitter.com/robinberjon)'s criticism of [JSON-LD](https://json-ld.org) titled [Don't Make Me Think (About Linked Data)](https://web.archive.org/web/20130814103818/http://berjon.com/blog/2013/06/linked-data.html).
 
-## Example usage
-
-Here is a processor function which demonstrates how to use JSON-LZ.
-
-```js
-import * as JSONLZ from 'json-lz'
-
-function processJsonObject (obj) {
-  // ...
-}
-```
-
-**Step 1. Detect support**
-
-We want to make sure that we don't misunderstand the JSON's data. A misunderstanding is called a "fatal ambiguity" and it's an error condition. To avoid that, we do vocab support-detection.
-
-```js
-var support = JSONLZ.detectSupport(obj, ['alice-calendar-app', 'bob-rsvps'])
-if (support.full) {
-  // 100% supported
-}
-if (support.partial) {
-  // some features missing but should work fine
-}
-if (support.incompatible) {
-  // unable to process object because required features are missing
-  // (in practice this is the only result we need to worry about)
-}
-if (support.inconclusive) {
-  // the object has no JSON-LZ metadata
-}
-```
-
-**Step 2. Validate the object**
-
-We expect the object to fit a specific structure. If the structure differs, we'll fail validation or modify the object to make it fit.
-
-```js
-if (obj.type !== 'event') throw new Error('.type must be "event"')
-if (!obj.name || typeof obj.name !== 'string') throw new Error('.name is required')
-if (!obj.startDate || typeof obj.startDate !== 'string') throw new Error('.startDate is required')
-obj.endDate = obj.endDate || obj.startDate
-if (!(obj.rsvp && typeof obj.rsvp === 'object')) {
-  obj.rsvp = {} // make sure a .rsvp object exists
-}
-obj.rsvp.required = typeof obj.rsvp.required === 'boolean' ? obj.rsvp.required : false
-```
-
-**Step 3. Transform between vocabularies**
-
-Sometimes there are competing vocabularies that encode the same data. If we think we can still use the data, we can transform the data to fit the vocabulary/structure we use. We sometimes call this "munging" the data.
-
-In this example, we have two "RSVP" vocabularies. The `'bobs-rsvps'` looks like:
-
-```
-{"rsvp": {"required": true, "deadlineDate": "..."}}
-```
-
-While the `'carlas-rsvps'` looks like:
-
-```
-{"rsvpIsRequired": true, "rsvpDeadline": "..."}
-```
-
-We're going to convert from `'carlas-rsvps'` to `'bobs-rsvps'`:
-
-```js
-JSONLZ.iterate(obj, 'carlas-rsvps', (key, value, path) => {
-  switch (key) {
-    case 'rsvpIsRequired':
-      obj.rsvp.required = value
-      break
-    case 'rsvpDeadline':
-      obj.rsvp.deadlineDate = value
-      break
-  }
-})
-```
-
-All that's left to do to finish our `processJsonObject` method is to return the result:
-
-```js
-return obj
-```
+See [DESIGN.md](DESIGN.md) for more information.
 
 ## Example objects
 
@@ -167,15 +82,85 @@ Developers should be careful about when they use the `required` keyword. See the
 
 ## How to use JSON-LZ
 
-JSON-LZ uses metadata to "paint" the attributes of a JSON document with vocabulary definitions. Vocabs are then used to identify the meanings of attributes, transform between different structures, and fallback to safe defaults in the case ambiguous meaning.
+JSON-LZ is a tool to be used in addition to traditional validation. It uses metadata to "paint" the attributes of a JSON document with vocabulary definitions. Vocabs are then used to help identify the meanings of attributes, transform between different structures, and fallback to safe defaults in the case ambiguous meaning.
 
-### Identifying the vocabulary of an attribute
+The premise of JSON-LZ is that it should not require any forethought to add value. Developers can layer it into their apps and schemas as they start to run into conflicts in their work.
 
-TODO
+See ["When to use JSON-LZ"](DESIGN.md#when-to-use-json-lz) for more information about this.
+
+### Validating objects
+
+Applications *must* validate their input JSON, but JSON-LZ has no tooling for doing this. JSON-LZ only helps with checking for ambiguities in declared vocabularies and for transforming between vocabs.
+
+Applications should validate their input JSON by checking the structure. Tools such as [JSON-Schema](http://json-schema.org/) are useful for accomplishing this.
+
+### Addign vocabulary metadata to objects
+
+See the [Vocabulary metadata](#vocabulary-metadata) for information about how to identify the schemas your JSON uses.
 
 ### Transforming between vocabularies
 
-TODO
+Sometimes there are competing vocabularies that encode the same data. If you think you can still use the data, you can transform the data to fit the vocabulary/structure you use. This is sometimes called "munging" the data.
+
+In this example, you have two "RSVP" vocabularies. The `'bobs-rsvps'` looks like:
+
+```
+{"rsvp": {"required": true, "deadlineDate": "..."}}
+```
+
+While the `'carlas-rsvps'` looks like:
+
+```
+{"rsvpIsRequired": true, "rsvpDeadline": "..."}
+```
+
+If we have an input JSON that identifies its rsvp data under the `'carlas-rsvps'` vocab, then we can convert from `'carlas-rsvps'` to `'bobs-rsvps'` by iterating over each attribute in the `'carlas-rsvps'` vocabulary and converting:
+
+```js
+obj.rsvp = obj.rsvp || {}
+JSONLZ.iterate(obj, 'carlas-rsvps', (key, value, path) => {
+  switch (key) {
+    case 'rsvpIsRequired':
+      obj.rsvp.required = value
+      break
+    case 'rsvpDeadline':
+      obj.rsvp.deadlineDate = value
+      break
+  }
+})
+```
+
+Here's an example object that would work with this technique:
+
+```json
+{
+  "@schema": [
+    "alice-calendar-app",
+    {"name": "carlas-rsvps", "attrs": ["rsvpIsRequired", "rsvpDeadline"]}
+  ],
+  "type": "event",
+  "name": "JSON-LZ Working Group Meeting",
+  "startDate": "2018-01-21T19:30:00.000Z",
+  "endDate": "2018-01-21T20:30:00.000Z",
+  "rsvpIsRequired": true,
+  "rsvpDeadline": "2018-01-18T19:30:00.000Z"
+}
+```
+
+And here is what the output object would look like:
+
+```json
+{
+  // ...
+  "type": "event",
+  "name": "JSON-LZ Working Group Meeting",
+  "startDate": "2018-01-21T19:30:00.000Z",
+  "endDate": "2018-01-21T20:30:00.000Z",
+  "rsvp": {
+    "required": true,
+    "deadlineDate": "2018-01-18T19:30:00.000Z"
+  }
+}
 
 ### Fatal ambiguity
 
@@ -196,6 +181,23 @@ Fatal ambiguities make it difficult (if not impossible) for developers to freely
 As a schema developer, you use the `"required": true` attribute in your vocabulary object. This signals that the JSON data would be *misunderstood* without fully supporting that vocabulary, and should therefore be ignored or logged away for debugging if support isn't available.
 
 As an app developer, you use the `checkSupport()` method on inputs and you pass in the list of vocabularies that you fully support. If the returned object has the `.incompatible` flag set to true, you should ignore the JSON, or perhaps save it in debugging storage for the user to diagnose.
+
+```js
+var support = JSONLZ.detectSupport(obj, ['alice-calendar-app', 'bob-rsvps'])
+if (support.full) {
+  // 100% supported
+}
+if (support.partial) {
+  // some vocabs are missing but should work fine
+}
+if (support.incompatible) {
+  // unable to process object because required vocabs are missing
+  // (in practice this is the only result we MUST worry about)
+}
+if (support.inconclusive) {
+  // the object has no JSON-LZ metadata
+}
+```
 
 #### How often should I use `"required": true` in my JSON?
 
