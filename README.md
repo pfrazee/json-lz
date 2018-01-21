@@ -1,27 +1,27 @@
 # JSON LZ
 
-Pronounced "JSON Lazy." An alternative to JSON-LD that's designed to maximize compatibility.
+Pronounced "JSON Lazy." An alternative to JSON-LD that's designed to work how developers work.
 
 Provides toolsets to:
 
- - Identify the vocabularies of JSON documents,
+ - Identify the schemas of JSON documents,
  - Transform between schema-vocabularies, and
  - Detect "fatal ambiguities" and fall back to smart defaults.
 
 **Status:** Work in progress.
 
+## [DESIGN.md](DESIGN.md)
+
 ## Background
 
 JSON-LZ was created as part of [this discussion in the Beaker community](https://github.com/beakerbrowser/beaker/issues/820) between members of the p2p Web, microdata, and W3C Social WG communities. This toolset was largely inspired by [Robin Berjon](https://twitter.com/robinberjon)'s criticism of [JSON-LD](https://json-ld.org) titled [Don't Make Me Think (About Linked Data)](https://web.archive.org/web/20130814103818/http://berjon.com/blog/2013/06/linked-data.html).
-
-**Read the [DESIGN.md](DESIGN.md) for more information.**
 
 **Philosophy**:
 
  - "[Munging](https://en.wikipedia.org/wiki/Mung_(computer_term)) after" is better than "planning before." (See [Worse is better](https://en.wikipedia.org/wiki/Worse_is_better).)
  - Applications should be liberal in what they accept. (See [Robustness Principle](https://en.wikipedia.org/wiki/Robustness_principle).)
 
-## Example
+## Example usage
 
 Here is a processor function which demonstrates how to use JSON-LZ.
 
@@ -29,12 +29,13 @@ Here is a processor function which demonstrates how to use JSON-LZ.
 import * as JSONLZ from 'json-lz'
 
 function processJsonObject (obj) {
+```
 
-  // Step 1. Detect support
-  // We want to make sure that we don't misunderstand the JSON's data
-  // A misunderstanding is called a "fatal ambiguity" and it's an error condition
-  // To avoid that, we do vocab support-detection
+### Step 1. Detect support
 
+We want to make sure that we don't misunderstand the JSON's data. A misunderstanding is called a "fatal ambiguity" and it's an error condition. To avoid that, we do vocab support-detection.
+
+```js
   var support = JSONLZ.detectSupport(obj, ['alice-calendar-app', 'bob-rsvps'])
   if (support.full) {
     // 100% supported
@@ -52,11 +53,15 @@ function processJsonObject (obj) {
   if (support.inconclusive) {
     // the object has no JSON-LZ metadata
   }
+```
 
-  // Step 2. Validate the object
-  // We expect the object to fit a current structure
-  // If the structure differs, we'll fail validation or modify the object
+### Step 2. Validate the object
 
+We expect the object to fit a specific structure. If the structure differs, we'll fail validation or modify the object to make it fit.
+
+(This is how you'd normally do input validation in JS.)
+
+```js
   if (obj.type !== 'event') throw new Error('.type must be "event"')
   if (!obj.name || typeof obj.name !== 'string') throw new Error('.name is required')
   if (!obj.startDate || typeof obj.startDate !== 'string') throw new Error('.startDate is required')
@@ -65,19 +70,27 @@ function processJsonObject (obj) {
     obj.rsvp = {} // make sure a .rsvp object exists
   }
   obj.rsvp.required = typeof obj.rsvp.required === 'boolean' ? obj.rsvp.required : false
+```
 
-  // Step 3. Transform between vocabularies
-  // Sometimes there are competing vocabularies that encode the same data
-  // If we think we can still use the data, we can transform the data
-  // We sometimes call this "munging" the data
+### Step 3. Transform between vocabularies
 
-  // In this example, we have two "RSVP" vocabularies
-  // The 'bobs-rsvps' looks like:
-  //   {"rsvp": {"required": true, "deadlineDate": "..."}}
-  // The 'carlas-rsvps' looks like:
-  //   {"rsvpIsRequired": true, "rsvpDeadline": "..."}
-  // We're going to convert from "carlas-rsvps" to 'bobs-rsvps'
+Sometimes there are competing vocabularies that encode the same data. If we think we can still use the data, we can transform the data to fit the vocabulary/structure we use. We sometimes call this "munging" the data.
 
+In this example, we have two "RSVP" vocabularies. The 'bobs-rsvps' looks like:
+
+```
+{"rsvp": {"required": true, "deadlineDate": "..."}}
+```
+
+While the 'carlas-rsvps' looks like:
+
+```
+{"rsvpIsRequired": true, "rsvpDeadline": "..."}
+```
+
+We're going to convert from "carlas-rsvps" to 'bobs-rsvps'
+
+```js
   JSONLZ.iterate(obj, 'carlas-rsvps', (key, value, path) => {
     switch (key) {
       case 'rsvpIsRequired':
@@ -88,7 +101,11 @@ function processJsonObject (obj) {
         break
     }
   })
+```
 
+All that's left to do to finish our `processJsonObject` method is to return the result:
+
+```js
   return obj
 }
 ```
