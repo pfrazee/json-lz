@@ -34,7 +34,7 @@ All attributes in this object are part of the `"alice-calendar-app"` vocabulary.
 
 ### Two vocabularies
 
-Most attributes in this object are part of the `"alice-calendar-app"` vocabulary. The `"required"` and `"deadlineDate"` attributes are part of the `"bob-rsvps"` vocabulary.
+Most attributes in this object are part of the `"alice-calendar-app"` vocabulary. The `"requested"` and `"deadlineDate"` attributes are part of the `"bob-rsvps"` vocabulary.
 
 ```json
 {
@@ -47,15 +47,15 @@ Most attributes in this object are part of the `"alice-calendar-app"` vocabulary
   "startDate": "2018-01-21T19:30:00.000Z",
   "endDate": "2018-01-21T20:30:00.000Z",
   "rsvp": {
-    "required": true,
+    "requested": true,
     "deadlineDate": "2018-01-18T19:30:00.000Z"
   }
 }
 ```
 
-### Two vocabularies, with one required
+### A required vocabulariy
 
-This object is semantically the same as the "Two vocabularies" example above, however it adds a requirement that the `"bob-rsvps"` vocabulary is supported by an app that reads the JSON. If that vocabulary is not understood by the reading app, the app should treat it as "fatally ambiguous" and avoid using the JSON input.
+This object is the same as above, but it adds a requirement that the `"bob-rsvps"` vocabulary is supported by an app that reads the JSON. If that vocabulary is not understood by the reading app, the app should treat it as "fatally ambiguous" and avoid using the JSON input.
 
 ```json
 {
@@ -72,7 +72,7 @@ This object is semantically the same as the "Two vocabularies" example above, ho
   "startDate": "2018-01-21T19:30:00.000Z",
   "endDate": "2018-01-21T20:30:00.000Z",
   "rsvp": {
-    "required": true,
+    "requested": true,
     "deadlineDate": "2018-01-18T19:30:00.000Z"
   }
 }
@@ -82,63 +82,57 @@ Developers should be careful about when they use the `required` keyword. See the
 
 ## How to use JSON-LZ
 
-JSON-LZ is a tool to be used in addition validation.
+JSON-LZ uses metadata to "paint" the attributes of a JSON document with vocabulary definitions. Vocabs are then used to help identify the meanings of attributes, transform between different schemas, and fallback to safe defaults in the case ambiguous meaning. It is *not* an alternative to validation; it's a supplement to it.
 
-It uses metadata to "paint" the attributes of a JSON document with vocabulary definitions. Vocabs are then used to help identify the meanings of attributes, transform between different schemas, and fallback to safe defaults in the case ambiguous meaning.
-
-The premise of JSON-LZ is that it should not require any forethought to add value. Developers can layer it into their apps and schemas as they start to run into conflicts in their work. See ["When to use JSON-LZ"](DESIGN.md#when-to-use-json-lz) for more information about this.
+See ["When to use JSON-LZ"](DESIGN.md#when-to-use-json-lz) for more information about why JSON-LZ exists and when to use it in your app.
 
 ### Validating objects
 
-Applications *must* validate their input JSON, but JSON-LZ has no tooling for doing this. JSON-LZ only helps with checking for ambiguities in declared vocabularies and for transforming between vocabs.
-
-Applications should validate their input JSON by checking the structure. Tools such as [JSON-Schema](http://json-schema.org/) are useful for accomplishing this.
+Applications should validate their input JSON by checking the structure. Tools such as [JSON-Schema](http://json-schema.org/) are useful for accomplishing this. JSON-LZ does not help with validation - it only helps with checking for ambiguities in declared vocabularies and for transforming between vocabs.
 
 ### Transforming between vocabularies
 
 Sometimes there are competing vocabularies that encode the same data. If you think you can still use the data, you can transform the data to fit the vocabulary/structure you use. This is sometimes called "munging" the data.
 
-In this example, you have two "RSVP" vocabularies. The `'bobs-rsvps'` looks like:
+In this example, you have two "RSVP" vocabularies. The `'bobs-rsvps'` schema looks like:
 
 ```
-{"rsvp": {"required": true, "deadlineDate": "..."}}
+{"rsvp": {"requested": true, "deadlineDate": "..."}}
 ```
 
-While the `'carlas-rsvps'` looks like:
+While the `'carlas-rsvps'` schema looks like:
 
 ```
-{"rsvpIsRequired": true, "rsvpDeadline": "..."}
+{"rsvpIsRequested": true, "rsvpDeadline": "..."}
 ```
 
-If we have an input JSON that identifies its rsvp data under the `'carlas-rsvps'` vocab, then we can convert from `'carlas-rsvps'` to `'bobs-rsvps'` by iterating over each attribute in the `'carlas-rsvps'` vocabulary and converting:
+If we have an input JSON that identifies its RSVP data as using the `'carlas-rsvps'` vocab, then we can convert from `'carlas-rsvps'` to `'bobs-rsvps'` by iterating over each attribute in the `'carlas-rsvps'` vocabulary and converting:
 
 ```js
 obj.rsvp = obj.rsvp || {}
 JSONLZ.iterate(obj, 'carlas-rsvps', (key, value, path) => {
-  switch (key) {
-    case 'rsvpIsRequired':
-      obj.rsvp.required = value
-      break
-    case 'rsvpDeadline':
-      obj.rsvp.deadlineDate = value
-      break
+  if (key === 'rsvpIsRequested') {
+    obj.rsvp.requested = value
+  }
+  if (key === 'rsvpDeadline') {
+    obj.rsvp.deadlineDate = value
   }
 })
 ```
 
 Here's an example object that would work with this technique:
 
-```json
+```js
 {
   "@schema": [
     "alice-calendar-app",
-    {"name": "carlas-rsvps", "attrs": ["rsvpIsRequired", "rsvpDeadline"]}
+    {"name": "carlas-rsvps", "attrs": ["rsvpIsRequested", "rsvpDeadline"]}
   ],
   "type": "event",
   "name": "JSON-LZ Working Group Meeting",
   "startDate": "2018-01-21T19:30:00.000Z",
   "endDate": "2018-01-21T20:30:00.000Z",
-  "rsvpIsRequired": true,
+  "rsvpIsRequested": true,
   "rsvpDeadline": "2018-01-18T19:30:00.000Z"
 }
 ```
@@ -153,7 +147,7 @@ And here is what the output object would look like:
   "startDate": "2018-01-21T19:30:00.000Z",
   "endDate": "2018-01-21T20:30:00.000Z",
   "rsvp": {
-    "required": true,
+    "requested": true,
     "deadlineDate": "2018-01-18T19:30:00.000Z"
   }
 }
