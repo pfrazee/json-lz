@@ -270,7 +270,7 @@ Fatal ambiguities make it difficult (if not impossible) for developers to freely
 
 #### How do I avoid fatal ambiguities?
 
-As a schema developer, you use the `"required": true` attribute in your vocabulary object. This signals that the JSON data would be *misunderstood* without fully supporting that vocabulary, and should therefore be ignored or logged away for debugging if support isn't available.
+As a schema developer, you use the `"required": true` attribute in your vocabulary object. This signals that the JSON data would be *misunderstood* without fully supporting that vocabulary.
 
 As an app developer, you use the `checkSupport()` method on inputs and you pass in the list of vocabularies that you fully support. If the returned object has the `.incompatible` flag set to true, you should ignore the JSON, or perhaps save it in debugging storage for the user to diagnose.
 
@@ -296,10 +296,5 @@ if (support.inconclusive) {
 Very rarely! The only time you should include it is if the misinterpretation (or non-interpretation) of a field would create a major issue. In most cases, partial support of an object's vocabs will not create issues, so you should leave the vocab as unrequired.
 
 Required vocabs are a way to say "hide this object if you don't understand this vocab fully." Use it selectively.
-
-This path-language is intended to be so simple that an implementation can be written in less than twenty lines of code.
-
-
-
 
 
