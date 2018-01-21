@@ -8,9 +8,7 @@ Provides toolsets to:
  - Transform between schema-vocabularies, and
  - Detect "fatal ambiguities" and fall back to smart defaults.
 
-**Status:** Work in progress.
-
-## [DESIGN.md](DESIGN.md)
+**Status:** Work in progress. See [DESIGN.md](DESIGN.md).
 
 ## Background
 
@@ -24,6 +22,8 @@ Here is a processor function which demonstrates how to use JSON-LZ.
 import * as JSONLZ from 'json-lz'
 
 function processJsonObject (obj) {
+  // ...
+}
 ```
 
 **Step 1. Detect support**
@@ -31,78 +31,72 @@ function processJsonObject (obj) {
 We want to make sure that we don't misunderstand the JSON's data. A misunderstanding is called a "fatal ambiguity" and it's an error condition. To avoid that, we do vocab support-detection.
 
 ```js
-  var support = JSONLZ.detectSupport(obj, ['alice-calendar-app', 'bob-rsvps'])
-  if (support.full) {
-    // 100% supported
-  }
-  if (support.partial) {
-    // some features missing but should work fine
-  }
-  if (support.incompatible) {
-    // unable to process object because required features are missing
-    // (in practice this is the only result we need to worry about)
-    // options for handling this:
-    // - ignore the object entirely
-    // - store the object but only show it in debugging views
-  }
-  if (support.inconclusive) {
-    // the object has no JSON-LZ metadata
-  }
+var support = JSONLZ.detectSupport(obj, ['alice-calendar-app', 'bob-rsvps'])
+if (support.full) {
+  // 100% supported
+}
+if (support.partial) {
+  // some features missing but should work fine
+}
+if (support.incompatible) {
+  // unable to process object because required features are missing
+  // (in practice this is the only result we need to worry about)
+}
+if (support.inconclusive) {
+  // the object has no JSON-LZ metadata
+}
 ```
 
 **Step 2. Validate the object**
 
 We expect the object to fit a specific structure. If the structure differs, we'll fail validation or modify the object to make it fit.
 
-(This is how you'd normally do input validation in JS.)
-
 ```js
-  if (obj.type !== 'event') throw new Error('.type must be "event"')
-  if (!obj.name || typeof obj.name !== 'string') throw new Error('.name is required')
-  if (!obj.startDate || typeof obj.startDate !== 'string') throw new Error('.startDate is required')
-  obj.endDate = obj.endDate || obj.startDate
-  if (!(obj.rsvp && typeof obj.rsvp === 'object')) {
-    obj.rsvp = {} // make sure a .rsvp object exists
-  }
-  obj.rsvp.required = typeof obj.rsvp.required === 'boolean' ? obj.rsvp.required : false
+if (obj.type !== 'event') throw new Error('.type must be "event"')
+if (!obj.name || typeof obj.name !== 'string') throw new Error('.name is required')
+if (!obj.startDate || typeof obj.startDate !== 'string') throw new Error('.startDate is required')
+obj.endDate = obj.endDate || obj.startDate
+if (!(obj.rsvp && typeof obj.rsvp === 'object')) {
+  obj.rsvp = {} // make sure a .rsvp object exists
+}
+obj.rsvp.required = typeof obj.rsvp.required === 'boolean' ? obj.rsvp.required : false
 ```
 
 **Step 3. Transform between vocabularies**
 
 Sometimes there are competing vocabularies that encode the same data. If we think we can still use the data, we can transform the data to fit the vocabulary/structure we use. We sometimes call this "munging" the data.
 
-In this example, we have two "RSVP" vocabularies. The 'bobs-rsvps' looks like:
+In this example, we have two "RSVP" vocabularies. The `'bobs-rsvps'` looks like:
 
 ```
 {"rsvp": {"required": true, "deadlineDate": "..."}}
 ```
 
-While the 'carlas-rsvps' looks like:
+While the `'carlas-rsvps'` looks like:
 
 ```
 {"rsvpIsRequired": true, "rsvpDeadline": "..."}
 ```
 
-We're going to convert from "carlas-rsvps" to 'bobs-rsvps'
+We're going to convert from `'carlas-rsvps'` to `'bobs-rsvps'`:
 
 ```js
-  JSONLZ.iterate(obj, 'carlas-rsvps', (key, value, path) => {
-    switch (key) {
-      case 'rsvpIsRequired':
-        obj.rsvp.required = value
-        break
-      case 'rsvpDeadline':
-        obj.rsvp.deadlineDate = value
-        break
-    }
-  })
+JSONLZ.iterate(obj, 'carlas-rsvps', (key, value, path) => {
+  switch (key) {
+    case 'rsvpIsRequired':
+      obj.rsvp.required = value
+      break
+    case 'rsvpDeadline':
+      obj.rsvp.deadlineDate = value
+      break
+  }
+})
 ```
 
 All that's left to do to finish our `processJsonObject` method is to return the result:
 
 ```js
-  return obj
-}
+return obj
 ```
 
 ## Example objects
