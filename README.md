@@ -1,14 +1,12 @@
 # JSON LZ
 
-Pronounced "JSON Lazy." An alternative to JSON-LD that's designed to maximize compatibility between the schemas of projects with a minimal amount of forethought.
+Pronounced "JSON Lazy." An alternative to JSON-LD that's designed to maximize compatibility.
 
-Provides:
+Provides toolsets to:
 
- - A metadata schema for describing vocabularies in JSON documents.
- - Toolsets to...
-   - Identify the vocabularies of JSON documents,
-   - Transform between schema-vocabularies, and
-   - Provide smart fallbacks when support isn't possible.
+ - Identify the vocabularies of JSON documents,
+ - Transform between schema-vocabularies, and
+ - Detect "fatal ambiguities" and fall back to smart defaults.
 
 **Status:** Work in progress.
 
@@ -16,38 +14,154 @@ Provides:
 
 JSON-LZ was created as part of [this discussion in the Beaker community](https://github.com/beakerbrowser/beaker/issues/820) between members of the p2p Web, microdata, and W3C Social WG communities. This toolset was largely inspired by [Robin Berjon](https://twitter.com/robinberjon)'s criticism of [JSON-LD](https://json-ld.org) titled [Don't Make Me Think (About Linked Data)](https://web.archive.org/web/20130814103818/http://berjon.com/blog/2013/06/linked-data.html).
 
+**Read the [DESIGN.md](DESIGN.md) for more information.**
+
 **Philosophy**:
 
  - "[Munging](https://en.wikipedia.org/wiki/Mung_(computer_term)) after" is better than "planning before." (See [Worse is better](https://en.wikipedia.org/wiki/Worse_is_better).)
  - Applications should be liberal in what they accept. (See [Robustness Principle](https://en.wikipedia.org/wiki/Robustness_principle).)
 
-## When to use JSON-LZ
+## Example
 
-Apps are not expected to use JSON-LZ until they need to support multiple vocabularies. This is in keeping with our philosophy that "munging after" is better than "planning before." Put another way: you can't get every developer to do the "Right Thing," so you should make your apps safely handle the "Wrong Thing."
+Here is a processor function which demonstrates how to use JSON-LZ.
 
-The default assumption is that JSON will be created without any vocabulary metadata. JSON-LZ apps are **always expected** to use [duck-typing](https://en.wikipedia.org/wiki/Duck_typing) and custom identifying attributes (such as a `type`) as their primary solution to validating their inputs. If a JSON input fits its schema-shape, then apps can assume vocabulary conformance.
+```js
+import * as JSONLZ from 'json-lz'
 
-As communities grow and integrate more applications around a shared dataset, they will encounter issues due to ambiguities in schemas. At this point, they can add JSON-LZ metadata and tooling. (Of course, you can add JSON-LZ as early as you want.) The level of strictness used can increase as the complexity of the issues increases. The goal is to be as relaxed as possible and therefore support the most possible inputs without introducing "fatal ambiguities." When ambiguities begin to degrade the UX, the strictness around vocabularies can be increased.
+function processJsonObject (obj) {
+
+  // Step 1. Detect support
+  // We want to make sure that we don't misunderstand the JSON's data
+  // A misunderstanding is called a "fatal ambiguity" and it's an error condition
+  // To avoid that, we do vocab support-detection
+
+  var support = JSONLZ.detectSupport(obj, ['alice-calendar-app', 'bob-rsvps'])
+  if (support.full) {
+    // 100% supported
+  }
+  if (support.partial) {
+    // some features missing but should work fine
+  }
+  if (support.incompatible) {
+    // unable to process object because required features are missing
+    // (in practice this is the only result we need to worry about)
+    // options for handling this:
+    // - ignore the object entirely
+    // - store the object but only show it in debugging views
+  }
+  if (support.inconclusive) {
+    // the object has no JSON-LZ metadata
+  }
+
+  // Step 2. Validate the object
+  // We expect the object to fit a current structure
+  // If the structure differs, we'll fail validation or modify the object
+
+  if (obj.type !== 'event') throw new Error('.type must be "event"')
+  if (!obj.name || typeof obj.name !== 'string') throw new Error('.name is required')
+  if (!obj.startDate || typeof obj.startDate !== 'string') throw new Error('.startDate is required')
+  obj.endDate = obj.endDate || obj.startDate
+  if (!(obj.rsvp && typeof obj.rsvp === 'object')) {
+    obj.rsvp = {} // make sure a .rsvp object exists
+  }
+  obj.rsvp.required = typeof obj.rsvp.required === 'boolean' ? obj.rsvp.required : false
+
+  // Step 3. Transform between vocabularies
+  // Sometimes there are competing vocabularies that encode the same data
+  // If we think we can still use the data, we can transform the data
+  // We sometimes call this "munging" the data
+
+  // In this example, we have two "RSVP" vocabularies
+  // The 'bobs-rsvps' looks like:
+  //   {"rsvp": {"required": true, "deadlineDate": "..."}}
+  // The 'carlas-rsvps' looks like:
+  //   {"rsvpIsRequired": true, "rsvpDeadline": "..."}
+  // We're going to convert from "carlas-rsvps" to 'bobs-rsvps'
+
+  JSONLZ.iterate(obj, 'carlas-rsvps', (key, value, path) => {
+    switch (key) {
+      case 'rsvpIsRequired':
+        obj.rsvp.required = value
+        break
+      case 'rsvpDeadline':
+        obj.rsvp.deadlineDate = value
+        break
+    }
+  })
+
+  return obj
+}
+```
+
+## Example objects
+
+Here are some JSON objects which demonstrate how JSON-LZ's metadata works.
+
+### One vocabulary
+
+```json
+{
+  "@schema": "alice-calendar-app",
+  "type": "event",
+  "name": "JSON-LZ Working Group Meeting",
+  "startDate": "2018-01-21T19:30:00.000Z",
+  "endDate": "2018-01-21T20:30:00.000Z"
+}
+```
+
+All attributes in this object are part of the `"alice-calendar-app"` vocabulary.
+
+### Two vocabularies
+
+```json
+{
+  "@schema": [
+    "alice-calendar-app",
+    {"name": "bob-rsvps", "attrs": "rsvp.*"}
+  ],
+  "type": "event",
+  "name": "JSON-LZ Working Group Meeting",
+  "startDate": "2018-01-21T19:30:00.000Z",
+  "endDate": "2018-01-21T20:30:00.000Z",
+  "rsvp": {
+    "required": true,
+    "deadlineDate": "2018-01-18T19:30:00.000Z"
+  }
+}
+```
+
+Most attributes in this object are part of the `"alice-calendar-app"` vocabulary. The `"required"` and `"deadlineDate"` attributes are part of the `"bob-rsvps"` vocabulary.
+
+### Two vocabularies, with support metadata
+
+```json
+{
+  "@schema": [
+    "alice-calendar-app",
+    {
+      "name": "bob-rsvps",
+      "attrs": "rsvp.*",
+      "required": true
+    }
+  ],
+  "type": "event",
+  "name": "JSON-LZ Working Group Meeting",
+  "startDate": "2018-01-21T19:30:00.000Z",
+  "endDate": "2018-01-21T20:30:00.000Z",
+  "rsvp": {
+    "required": true,
+    "deadlineDate": "2018-01-18T19:30:00.000Z"
+  }
+}
+```
+
+This object is semantically the same as the "Two vocabularies" example above, however it adds a requirement that the `"bob-rsvps"` vocabulary is supported by an app that reads the JSON. If that vocabulary is not understood by the reading app, the app should treat it as "fatally ambiguous" and avoid using the JSON input.
+
+Developers should be careful about when they use the `required` keyword. See the section [Fatal ambiguity](#fatal-ambiguity).
 
 ## How to use JSON-LZ
 
-JSON-LZ uses metadata to "paint" the attributes of a JSON document with vocabulary definitions. Vocabs are arbitrary strings (not necessarily URLs) which declare the schema's origins. They can be used to identify the meanings of attributes, transform between different structures, and fallback to safe defaults in the case ambiguous meaning.
-
-### "Painting" attributes
-
-TODO
-
-#### Via duck-typing
-
-TODO
-
-#### Via JSON-LZ metadata
-
-TODO
-
-#### Via JSON-LD metadata
-
-TODO
+JSON-LZ uses metadata to "paint" the attributes of a JSON document with vocabulary definitions. Vocabs are then used to identify the meanings of attributes, transform between different structures, and fallback to safe defaults in the case ambiguous meaning.
 
 ### Identifying the vocabulary of an attribute
 
@@ -57,154 +171,203 @@ TODO
 
 TODO
 
-### Detecting ambiguities and falling back to safe defaults
+### Fatal ambiguity
 
-TODO
+Ambiguous interpretations of data can sometimes result in critical mistakes. This is rare, but problematic enough that it should be actively avoided.
 
+Avoiding fatal ambiguity is one of the primary purposes of JSON-LZ.
 
-## Requirements
+#### An example of "fatal ambiguity"
 
-### Good ergonomics within Javascript
+In a social media application, a "status update" JSON might be extended to include an `"audience"` field. The field's goal would be to control the visibility of a message; for instance, "only show this status-update to Bob." If that field is not interpretted correctly by a client, the message would be visible to the wrong audiences. This is fatal ambiguity caused by partial support; the client understood the parts of the JSON that meant "status update" but it didn't understand the part that said "only show this to Bob."
 
-JSON-LZ should be fun and easy to use. Developers should not have to futz with strange keynames or read long documents like this one prior to writing their applications. Further, it should involve minimal tooling to leverage; an app should not have to import a library to support JSON-LZ.
+#### Why does it matter?
 
-JSON-LD attempts to support "minimal tooling" by saying "all you need to do is put the @context field on your JSON." This fails in practice because schemas can take so many forms; depending on how the writing-app constructs the JSON-LD, some attributes may or may not have scopes in front of them (eg `foaf:relationship`). This creates a problem for apps that read the JSON, and it can only be solved with a "normalization" step (expand and contract into a predictable form).
+Fatal ambiguities make it difficult (if not impossible) for developers to freely extend their schemas. Because they have no way to signal the danger of partial support, they can only hope that all other clients will add full support in the near future. This will stifle developers and lead to bad user experiences.
 
-JSON-LZ avoids this by not using scoped attributes. All vocabulary is applied by selectors in the metadata object, and follows an easy-to-understand structure. The goal is to make a tool that developers *actually like to use* and which doesn't raise weird questions like "what the hell does @id mean."
+#### How do I avoid fatal ambiguities?
 
-### Post-hoc compatibility
+As a schema developer, you use the `"required": true` attribute in your vocabulary object. This signals that the JSON data would be *misunderstood* without fully supporting that vocabulary, and should therefore be ignored or logged away for debugging if support isn't available.
 
-Compatability between schemas must be doable as an afterthought. Otherwise, then too much upfront coordination will be required and we won't get compatible data.
+As an app developer, you use the `checkSupport()` method on inputs and you pass in the list of vocabularies that you fully support. If the returned object has the `.incompatible` flag set to true, you should ignore the JSON, or perhaps save it in debugging storage for the user to diagnose.
 
-### Well-defined fallback behaviors
+#### How often should I use `"required": true` in my JSON?
 
-Ambiguous interpretations of data can sometimes result in critical mistakes. This should be avoided.
+Very rarely! The only time you should include it is if the misinterpretation (or non-interpretation) of a field would create a major issue. In most cases, partial support of an object's vocabs will not create issues, so you should leave the vocab as unrequired.
 
-For instance, in a social media application, a "status update" JSON might be extended to include an `"audience"` field. The field's goal would be to control the visibility of a message; for instance, "only show this status-update to Bob." If that field is not interpretted correctly by a client, the message would be visible to the wrong audiences. This is fatal ambiguity caused by partial support; the client understood the parts of the JSON that meant "status update" but it didn't understand the part that said "only show this to Bob."
+Required vocabs are a way to say "hide this object if you don't understand this vocab fully." Use it selectively.
 
-Fatal ambiguities make it difficult (if not impossible) for developers to freely extend their schemas. Because they have no way to signal the danger of partial support, they can only hope that all other clients will add full support in the near future. This will stifle development.
+## Vocabulary metadata
 
-To address this, applications need a mechanism to identify ambiguities and fall back to well-defined behaviors. If a schema adds a feature which *must* be supported by an application for the message to have meaning, then the JSON-LZ tooling should to be able to identify the ambiguity and trigger one of the fallback behaviors. (Fallbacks may range from "render the simple form" to "render a descriptive error" to "render nothing at all.")
+The JSON-LZ metadata is placed in the toplevel `"@schema"` attribute. It is an array of objects which describe the vocabularies of the attributes.
 
-### Arbitrary vocabulary identifiers
+```js
+{
+  "@schema": [/* your schema vocab objects */],
+  /* the rest of the data */
+}
+```
 
-Schema vocabularies may be identified by any string; URL identifiers are not required.
+The values in the `"@schema"` array are called "vocabulary objects." They follow the following schema:
 
-**Reasoning**: Publishing a schema is time-consuming and requires the developer to maintain the document at the given URL, which most developers won't bother with. Developers should instead endeavor to use "unique-enough" identifiers which are unlikely to collide, and which will provide good information on a search.
+```
+{
+  name: String.
+  attrs: optional Array<String>. Default undefined.
+  required: optional Boolean. Default false.
+}
+```
 
-### Flexibility in vocabulary metadata
+If a string value is given in `@schema`, it will expand to an object with the default values. For instance, the string 'foo-vocab' will expand to the following object:
 
-JSON-LZ's philosophy is to solve all things with munging, and it'd be hypocritical if we didn't munge metadata too.
+```js
+{
+  name: 'foo-vocab',
+  attrs: undefined,
+  required: false
+}
+```
 
-JSON-LZ has a pluggable vocab-metadata processor which can be used to support alternative formats such as JSON-LD and [HAL](http://stateless.co/hal_specification.html). This can also be used by applications to detect vocabularies by duck-typing.
+**name**. The name is the only required attribute. It may be any string value, including URLs. You should try to use long and non-generic names to avoid accidental collisions. For instance, instead of just `'status-update'`, you should prepend your org name, ie `'genericorp-status-update'`.
+
+You should use a URL for the name if you plan to publish and maintain documentation at the location. If not, then you should use a string that's unique enough that it will be easy to search against (and therefore discover the docs via a search engine).
+
+**attrs**. The `attrs` attribute describes which attributes in the object use the vocabulary. It should be an array of attribute paths. (See [Attribute Paths](#attribute-paths).)
+
+When multiple attribute paths match, the most specific (that is, longest) will be used. Therefore, for the object `{foo:{bar:{baz: true}}}`, the path `foo.bar` will match everything inside for `bar` (include `baz`). However, if the path `foo.bar.baz` is present, then that will take precedent over the `foo.bar` selector. If there are multiple matching selectors of the same length, the first to match will be used (vocabulary objects are processed in order).
+
+If `attrs` is set to `undefined`, then the vocabulary will be used as the default vocabulary for any attribute that does not have an explicitly-set vocab. Only the first vocabulary-object with an undefined `attrs` will be the default.
+
+**required**. If true, the vocabulary must be supported by the reading application for the JSON to have meaning. An application which does not support a required vocab must not make regular use of the input JSON.
+
+### Attribute Paths
+
+The "Attribute Path" is a very simple language for identifying attributes within the JSON object. It supports two special characters:
+
+ - `.` Separates attribute references.
+ - `*` Matches all attribute names
+
+Examples:
+
+```
+name           => 'Bob'
+location       => {state: 'Texas', city: 'Austin'}
+location.state => 'Texas'
+location.*     => ['Texas', 'Austin']
+friends        => [{name: 'Alice'}, {name: 'Carla'}]
+friends.*      => [{name: 'Alice'}, {name: 'Carla'}]
+friends.0      => {name: 'Alice'}
+friends.0.name => 'Alice'
+friends.1.name => 'Carla'
+friends.*.name => ['Alice', 'Carla']
+```
+
+Input object:
+
+```
+{
+  name: 'Bob',
+  location: {
+    state: 'Texas',
+    city: 'Austin'
+  },
+  friends: [
+    {name: 'Alice'},
+    {name: 'Carla'}
+  ]
+}
+```
+
+This path-language is intended to be so simple that an implementation can be written in less than twenty lines of code.
 
 ## API
 
-### jlz.extract()
+### jlz.checkSupport()
+
+TODO document more
 
 ```js
 var doc = {
-  meta: {
-    uses: [
-      'bll-fritter', // default vocabulary
-      {
-        vocab: 'https://www.w3.org/ns/activitystreams',
-        for: ['@type', 'content', 'inReplyTo', 'published']
-      }
-    ]
-  },
-
-  // fritter
-  text: 'Hello world',
-  threadRoot: 'dat://alice.com/posts/33.json',
-  threadParent: 'dat://bob.com/posts/15.json',
-  createdAt: 1516309496622,
-
-  // activity streams
-  '@type': 'Note',
-  content: 'Hello world',
-  inReplyTo: 'dat://bob.com/posts/15.json',
-  published: '1/18/2018, 3:04:56 PM'
+  '@schema':[
+    {
+      name: 'bll-fritter',
+      required: true,
+      fallback: 'discard'
+    },
+    {
+      name: 'https://www.w3.org/ns/activitystreams',
+      attrs: ['@type', 'content', 'inReplyTo', 'published']
+    }
+  ],
+  // ...
 }
 
-jlz.extract(doc, 'bll-fritter') /* => {
-  text: 'Hello world',
-  threadRoot: 'dat://.../',
-  threadParent: 'dat://.../',
-  createdAt: 1516309496622
+jlz.checkSupport(doc, ['bll-fritter', 'https://www.w3.org/ns/activitystreams'])
+/* => {
+  passes: true,
+  supported: [
+    {
+      name: 'bll-fritter',
+      required: true,
+      fallback: 'discard'
+    },
+    {
+      name: 'https://www.w3.org/ns/activitystreams',
+      attrs: ['@type', 'content', 'inReplyTo', 'published']
+    }
+  ],
+  unsupported: []
 } */
 
-jlz.extract(doc, 'https://www.w3.org/ns/activitystreams') /* => {
-  '@type': 'Note',
-  content: 'Hello world',
-  inReplyTo: 'dat://bob.com/posts/15.json',
-  published: '1/18/2018, 3:04:56 PM'
+jlz.checkSupport(doc, ['bll-fritter', 'something-else'])
+/* => {
+  passes: true,
+  supported: [
+    {
+      name: 'bll-fritter',
+      required: true,
+      fallback: 'discard'
+    }
+  ],
+  unsupported: [
+    {
+      name: 'https://www.w3.org/ns/activitystreams',
+      attrs: ['@type', 'content', 'inReplyTo', 'published']
+    }
+  ]
 } */
 
-jlz.extract(doc, ['bll-fritter', 'https://www.w3.org/ns/activitystreams']) /* => {
-  text: 'Hello world',
-  threadRoot: 'dat://.../',
-  threadParent: 'dat://.../',
-  createdAt: 1516309496622,
-  '@type': 'Note',
-  content: 'Hello world',
-  inReplyTo: 'dat://bob.com/posts/15.json',
-  published: '1/18/2018, 3:04:56 PM'
-} */
-
-jlz.extract(doc, 'some-other-spec') // => {}
-```
-
-With `strict: false`, any attributes without vocabularies ("vocab-free" attributes) will be returned. With `strict: true`, the vocab-free attributes are excluded.
-
-```js
-var doc = {
-  meta: {
-    uses: [
-      // no default vocabulary specified
-      {
-        vocab: 'https://www.w3.org/ns/activitystreams',
-        for: ['@type', 'content', 'inReplyTo', 'published']
-      }
-    ]
-  },
-
-  // vacab-free attributes
-  foo: 'bar',
-  hello: 'world',
-
-  // activity streams
-  '@type': 'Note',
-  content: 'Hello world',
-  inReplyTo: 'dat://bob.com/posts/15.json',
-  published: '1/18/2018, 3:04:56 PM'
-}
-
-jlz.extract(doc, 'https://www.w3.org/ns/activitystreams', {strict: true}) /* => {
-  '@type': 'Note',
-  content: 'Hello world',
-  inReplyTo: 'dat://bob.com/posts/15.json',
-  published: '1/18/2018, 3:04:56 PM'
-} */
-
-jlz.extract(doc, 'https://www.w3.org/ns/activitystreams', {strict: false}) /* => {
-  foo: 'bar',
-  hello: 'world',
-  '@type': 'Note',
-  content: 'Hello world',
-  inReplyTo: 'dat://bob.com/posts/15.json',
-  published: '1/18/2018, 3:04:56 PM'
+jlz.checkSupport(doc, ['something-else'])
+/* => {
+  passes: false,
+  fallback: 'discard',
+  supported: [],
+  unsupported: [
+    {
+      name: 'bll-fritter',
+      required: true,
+      fallback: 'discard'
+    },
+    {
+      name: 'https://www.w3.org/ns/activitystreams',
+      attrs: ['@type', 'content', 'inReplyTo', 'published']
+    }
+  ]
 } */
 ```
 
-### jlz.getAttrVocab()
+### jlz.getSchemaFor()
+
+TODO document more
 
 ```js
-jlz.getAttrVocab(doc, 'text') // => 'bll-fritter'
-jlz.getAttrVocab(doc, 'content') // => 'https://www.w3.org/ns/activitystreams'
+jlz.getSchemaFor(doc, 'text') // => 'bll-fritter'
+jlz.getSchemaFor(doc, 'content') // => 'https://www.w3.org/ns/activitystreams'
 ```
 
 ### jlz.iterate()
+
+TODO document more
 
 ```js
 jlz.iterate(doc, 'https://www.w3.org/ns/activitystreams', (key, value, path) => {
@@ -215,35 +378,7 @@ jlz.iterate(doc, 'https://www.w3.org/ns/activitystreams', (key, value, path) => 
 })
 ```
 
-### jlz.convert()
 
-Example of converting from activity streams to bll-fritter:
 
-```js
-jlz.convert(doc, 'https://www.w3.org/ns/activitystreams', {
-  content: 'text',
-  inReplyTo: 'threadParent',
-  published: 'createdAt'
-})
-```
 
-Sometimes you need to put up type-guards, or deal with multiple value types. You can handle that by specifying a `value` function:
 
-```js
-jlz.convert(doc, 'https://www.w3.org/ns/activitystreams', {
-  content: 'text',
-  inReplyTo: {
-    key: 'threadParent',
-    value: v => {
-      if (typeof v === 'string') return v
-      if (v && typeof v.url === 'string') return v.url
-      return undefined // no usable value
-    }
-  },
-  published: 'createdAt'
-})
-```
-
-## Notes
-
-The metadata about a schema's vocabulary serves primarily to identify the vocabulary that a given attribute belongs to. With that metadata, we can 1) recognize the specific meaning of an attribute, 2) determine how to correctly transform data from one schema to another, 3) 
