@@ -1,3 +1,9 @@
+# Design
+
+## Philosophy
+
+ - "[Munging](https://en.wikipedia.org/wiki/Mung_(computer_term)) after" is better than "planning before." (See [Worse is better](https://en.wikipedia.org/wiki/Worse_is_better).)
+ - Applications should be liberal in what they accept. (See [Robustness Principle](https://en.wikipedia.org/wiki/Robustness_principle).)
 
 ## When to use JSON-LZ
 

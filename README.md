@@ -16,11 +16,6 @@ Provides toolsets to:
 
 JSON-LZ was created as part of [this discussion in the Beaker community](https://github.com/beakerbrowser/beaker/issues/820) between members of the p2p Web, microdata, and W3C Social WG communities. This toolset was largely inspired by [Robin Berjon](https://twitter.com/robinberjon)'s criticism of [JSON-LD](https://json-ld.org) titled [Don't Make Me Think (About Linked Data)](https://web.archive.org/web/20130814103818/http://berjon.com/blog/2013/06/linked-data.html).
 
-**Philosophy**:
-
- - "[Munging](https://en.wikipedia.org/wiki/Mung_(computer_term)) after" is better than "planning before." (See [Worse is better](https://en.wikipedia.org/wiki/Worse_is_better).)
- - Applications should be liberal in what they accept. (See [Robustness Principle](https://en.wikipedia.org/wiki/Robustness_principle).)
-
 ## Example usage
 
 Here is a processor function which demonstrates how to use JSON-LZ.
@@ -31,7 +26,7 @@ import * as JSONLZ from 'json-lz'
 function processJsonObject (obj) {
 ```
 
-### Step 1. Detect support
+**Step 1. Detect support**
 
 We want to make sure that we don't misunderstand the JSON's data. A misunderstanding is called a "fatal ambiguity" and it's an error condition. To avoid that, we do vocab support-detection.
 
@@ -55,7 +50,7 @@ We want to make sure that we don't misunderstand the JSON's data. A misunderstan
   }
 ```
 
-### Step 2. Validate the object
+**Step 2. Validate the object**
 
 We expect the object to fit a specific structure. If the structure differs, we'll fail validation or modify the object to make it fit.
 
@@ -72,7 +67,7 @@ We expect the object to fit a specific structure. If the structure differs, we'l
   obj.rsvp.required = typeof obj.rsvp.required === 'boolean' ? obj.rsvp.required : false
 ```
 
-### Step 3. Transform between vocabularies
+**Step 3. Transform between vocabularies**
 
 Sometimes there are competing vocabularies that encode the same data. If we think we can still use the data, we can transform the data to fit the vocabulary/structure we use. We sometimes call this "munging" the data.
 
