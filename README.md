@@ -20,6 +20,8 @@ Here are some JSON objects which demonstrate how JSON-LZ's metadata works.
 
 ### One vocabulary
 
+All attributes in this object are part of the `"alice-calendar-app"` vocabulary.
+
 ```json
 {
   "@schema": "alice-calendar-app",
@@ -30,9 +32,9 @@ Here are some JSON objects which demonstrate how JSON-LZ's metadata works.
 }
 ```
 
-All attributes in this object are part of the `"alice-calendar-app"` vocabulary.
-
 ### Two vocabularies
+
+Most attributes in this object are part of the `"alice-calendar-app"` vocabulary. The `"required"` and `"deadlineDate"` attributes are part of the `"bob-rsvps"` vocabulary.
 
 ```json
 {
@@ -51,9 +53,9 @@ All attributes in this object are part of the `"alice-calendar-app"` vocabulary.
 }
 ```
 
-Most attributes in this object are part of the `"alice-calendar-app"` vocabulary. The `"required"` and `"deadlineDate"` attributes are part of the `"bob-rsvps"` vocabulary.
+### Two vocabularies, with one required
 
-### Two vocabularies, with support metadata
+This object is semantically the same as the "Two vocabularies" example above, however it adds a requirement that the `"bob-rsvps"` vocabulary is supported by an app that reads the JSON. If that vocabulary is not understood by the reading app, the app should treat it as "fatally ambiguous" and avoid using the JSON input.
 
 ```json
 {
@@ -76,27 +78,21 @@ Most attributes in this object are part of the `"alice-calendar-app"` vocabulary
 }
 ```
 
-This object is semantically the same as the "Two vocabularies" example above, however it adds a requirement that the `"bob-rsvps"` vocabulary is supported by an app that reads the JSON. If that vocabulary is not understood by the reading app, the app should treat it as "fatally ambiguous" and avoid using the JSON input.
-
 Developers should be careful about when they use the `required` keyword. See the section [Fatal ambiguity](#fatal-ambiguity).
 
 ## How to use JSON-LZ
 
-JSON-LZ is a tool to be used in addition to traditional validation. It uses metadata to "paint" the attributes of a JSON document with vocabulary definitions. Vocabs are then used to help identify the meanings of attributes, transform between different structures, and fallback to safe defaults in the case ambiguous meaning.
+JSON-LZ is a tool to be used in addition validation.
 
-The premise of JSON-LZ is that it should not require any forethought to add value. Developers can layer it into their apps and schemas as they start to run into conflicts in their work.
+It uses metadata to "paint" the attributes of a JSON document with vocabulary definitions. Vocabs are then used to help identify the meanings of attributes, transform between different schemas, and fallback to safe defaults in the case ambiguous meaning.
 
-See ["When to use JSON-LZ"](DESIGN.md#when-to-use-json-lz) for more information about this.
+The premise of JSON-LZ is that it should not require any forethought to add value. Developers can layer it into their apps and schemas as they start to run into conflicts in their work. See ["When to use JSON-LZ"](DESIGN.md#when-to-use-json-lz) for more information about this.
 
 ### Validating objects
 
 Applications *must* validate their input JSON, but JSON-LZ has no tooling for doing this. JSON-LZ only helps with checking for ambiguities in declared vocabularies and for transforming between vocabs.
 
 Applications should validate their input JSON by checking the structure. Tools such as [JSON-Schema](http://json-schema.org/) are useful for accomplishing this.
-
-### Addign vocabulary metadata to objects
-
-See the [Vocabulary metadata](#vocabulary-metadata) for information about how to identify the schemas your JSON uses.
 
 ### Transforming between vocabularies
 
@@ -149,7 +145,7 @@ Here's an example object that would work with this technique:
 
 And here is what the output object would look like:
 
-```json
+```js
 {
   // ...
   "type": "event",
@@ -161,6 +157,7 @@ And here is what the output object would look like:
     "deadlineDate": "2018-01-18T19:30:00.000Z"
   }
 }
+```
 
 ### Fatal ambiguity
 
