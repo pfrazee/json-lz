@@ -1,10 +1,10 @@
 # JSON LZ
 
-Pronounced "JSON Lazy." A toolset to:
+Pronounced "JSON Lazy." A toolset for app developers to share JSON data between applications without creating conflicts in meaning. Includes tools to:
 
  - Identify the schemas of JSON documents,
  - Transform between schema-vocabularies, and
- - Detect "fatal ambiguities" and fall back to smart defaults.
+ - Detect ambiguities and abort.
 
 **Status:** Work in progress.
 
