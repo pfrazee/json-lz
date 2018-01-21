@@ -40,7 +40,7 @@ Most attributes in this object are part of the `"alice-calendar-app"` vocabulary
 {
   "@schema": [
     "alice-calendar-app",
-    {"name": "bob-rsvps", "attrs": "rsvp.*"}
+    {"name": "bob-rsvps", "attrs": "rsvp.*", "required": true}
   ],
   "type": "event",
   "name": "JSON-LZ Working Group Meeting",
@@ -53,36 +53,137 @@ Most attributes in this object are part of the `"alice-calendar-app"` vocabulary
 }
 ```
 
-### A required vocabulariy
+This JSON also uses the `"required": true` flag on the `"bob-rsvps"` vocabulary. See ["How do I avoid fatal ambiguities?"](#how-do-i-avoid-fatal-ambiguities) for more information about this field.
 
-This object is the same as above, but it adds a requirement that the `"bob-rsvps"` vocabulary is supported by an app that reads the JSON. If that vocabulary is not understood by the reading app, the app should treat it as "fatally ambiguous" and avoid using the JSON input.
+## API
 
-```json
+### jlz.checkSupport()
+
+TODO document more
+
+```js
+var support = JSONLZ.detectSupport(obj, ['alice-calendar-app', 'bob-rsvps'])
+if (support.full) {
+  // 100% supported
+}
+if (support.partial) {
+  // some vocabs are missing but should work fine
+}
+if (support.incompatible) {
+  // unable to process object because required vocabs are missing
+  // (in practice this is the only result we MUST worry about)
+}
+if (support.inconclusive) {
+  // the object has no JSON-LZ metadata
+}
+```
+
+### jlz.getSchemaFor()
+
+TODO document more
+
+```js
+jlz.getSchemaFor(doc, 'text') // => 'bll-fritter'
+jlz.getSchemaFor(doc, 'content') // => 'https://www.w3.org/ns/activitystreams'
+```
+
+### jlz.iterate()
+
+TODO document more
+
+```js
+jlz.iterate(doc, 'https://www.w3.org/ns/activitystreams', (key, value, path) => {
+  // example values for {"inReplyTo": {"summary": "Previous note"}}
+  console.log(key) // => 'summary'
+  console.log(path) // => 'inReplyTo.summary' 
+  console.log(value) // => 'Previous note'
+})
+```
+
+## Vocabulary metadata
+
+The JSON-LZ metadata is placed in the toplevel `"@schema"` attribute. It is an array of objects which describe the vocabularies of the attributes.
+
+```js
 {
-  "@schema": [
-    "alice-calendar-app",
-    {
-      "name": "bob-rsvps",
-      "attrs": "rsvp.*",
-      "required": true
-    }
-  ],
-  "type": "event",
-  "name": "JSON-LZ Working Group Meeting",
-  "startDate": "2018-01-21T19:30:00.000Z",
-  "endDate": "2018-01-21T20:30:00.000Z",
-  "rsvp": {
-    "requested": true,
-    "deadlineDate": "2018-01-18T19:30:00.000Z"
-  }
+  "@schema": [/* your schema vocab objects */],
+  /* the rest of the data */
 }
 ```
 
-Developers should be careful about when they use the `required` keyword. See the section [Fatal ambiguity](#fatal-ambiguity).
+The values in the `"@schema"` array are called "vocabulary objects." They follow the following schema:
+
+```
+{
+  name: String.
+  attrs: optional Array<String>. Default undefined.
+  required: optional Boolean. Default false.
+}
+```
+
+If a string value is given in `@schema`, it will expand to an object with the default values. For instance, the string 'foo-vocab' will expand to the following object:
+
+```js
+{
+  name: 'foo-vocab',
+  attrs: undefined,
+  required: false
+}
+```
+
+**name**. The name is the only required attribute. It may be any string value, including URLs. You should try to use long and non-generic names to avoid accidental collisions. For instance, instead of just `'status-update'`, you should prepend your org name, ie `'genericorp-status-update'`.
+
+You should use a URL for the name if you plan to publish and maintain documentation at the location. If not, then you should use a string that's unique enough that it will be easy to search against (and therefore discover the docs via a search engine).
+
+**attrs**. The `attrs` attribute describes which attributes in the object use the vocabulary. It should be an array of attribute paths. (See [Attribute Paths](#attribute-paths).)
+
+When multiple attribute paths match, the most specific (that is, longest) will be used. Therefore, for the object `{foo:{bar:{baz: true}}}`, the path `foo.bar` will match everything inside for `bar` (include `baz`). However, if the path `foo.bar.baz` is present, then that will take precedent over the `foo.bar` selector. If there are multiple matching selectors of the same length, the first to match will be used (vocabulary objects are processed in order).
+
+If `attrs` is set to `undefined`, then the vocabulary will be used as the default vocabulary for any attribute that does not have an explicitly-set vocab. Only the first vocabulary-object with an undefined `attrs` will be the default.
+
+**required**. If true, the vocabulary must be supported by the reading application for the JSON to have meaning. An application which does not support a required vocab must not make regular use of the input JSON.
+
+### Attribute Paths
+
+The "Attribute Path" is a very simple language for identifying attributes within the JSON object. It supports two special characters:
+
+ - `.` Separates attribute references.
+ - `*` Matches all attribute names
+
+Examples:
+
+```
+name           => 'Bob'
+location       => {state: 'Texas', city: 'Austin'}
+location.state => 'Texas'
+location.*     => ['Texas', 'Austin']
+friends        => [{name: 'Alice'}, {name: 'Carla'}]
+friends.*      => [{name: 'Alice'}, {name: 'Carla'}]
+friends.0      => {name: 'Alice'}
+friends.0.name => 'Alice'
+friends.1.name => 'Carla'
+friends.*.name => ['Alice', 'Carla']
+```
+
+Input object:
+
+```
+{
+  name: 'Bob',
+  location: {
+    state: 'Texas',
+    city: 'Austin'
+  },
+  friends: [
+    {name: 'Alice'},
+    {name: 'Carla'}
+  ]
+}
+```
 
 ## How to use JSON-LZ
 
-JSON-LZ uses metadata to "paint" the attributes of a JSON document with vocabulary definitions. Vocabs are then used to help identify the meanings of attributes, transform between different schemas, and fallback to safe defaults in the case ambiguous meaning. It is *not* an alternative to validation; it's a supplement to it.
+JSON-LZ uses metadata to "paint" the attributes of a JSON document with vocabulary definitions. Vocabs are then used to help identify the meanings of attributes, transform between different schemas, and fallback to safe defaults in the case ambiguous meaning. It is *not* an alternative to validation.
 
 See ["When to use JSON-LZ"](DESIGN.md#when-to-use-json-lz) for more information about why JSON-LZ exists and when to use it in your app.
 
@@ -196,116 +297,7 @@ Very rarely! The only time you should include it is if the misinterpretation (or
 
 Required vocabs are a way to say "hide this object if you don't understand this vocab fully." Use it selectively.
 
-## Vocabulary metadata
-
-The JSON-LZ metadata is placed in the toplevel `"@schema"` attribute. It is an array of objects which describe the vocabularies of the attributes.
-
-```js
-{
-  "@schema": [/* your schema vocab objects */],
-  /* the rest of the data */
-}
-```
-
-The values in the `"@schema"` array are called "vocabulary objects." They follow the following schema:
-
-```
-{
-  name: String.
-  attrs: optional Array<String>. Default undefined.
-  required: optional Boolean. Default false.
-}
-```
-
-If a string value is given in `@schema`, it will expand to an object with the default values. For instance, the string 'foo-vocab' will expand to the following object:
-
-```js
-{
-  name: 'foo-vocab',
-  attrs: undefined,
-  required: false
-}
-```
-
-**name**. The name is the only required attribute. It may be any string value, including URLs. You should try to use long and non-generic names to avoid accidental collisions. For instance, instead of just `'status-update'`, you should prepend your org name, ie `'genericorp-status-update'`.
-
-You should use a URL for the name if you plan to publish and maintain documentation at the location. If not, then you should use a string that's unique enough that it will be easy to search against (and therefore discover the docs via a search engine).
-
-**attrs**. The `attrs` attribute describes which attributes in the object use the vocabulary. It should be an array of attribute paths. (See [Attribute Paths](#attribute-paths).)
-
-When multiple attribute paths match, the most specific (that is, longest) will be used. Therefore, for the object `{foo:{bar:{baz: true}}}`, the path `foo.bar` will match everything inside for `bar` (include `baz`). However, if the path `foo.bar.baz` is present, then that will take precedent over the `foo.bar` selector. If there are multiple matching selectors of the same length, the first to match will be used (vocabulary objects are processed in order).
-
-If `attrs` is set to `undefined`, then the vocabulary will be used as the default vocabulary for any attribute that does not have an explicitly-set vocab. Only the first vocabulary-object with an undefined `attrs` will be the default.
-
-**required**. If true, the vocabulary must be supported by the reading application for the JSON to have meaning. An application which does not support a required vocab must not make regular use of the input JSON.
-
-### Attribute Paths
-
-The "Attribute Path" is a very simple language for identifying attributes within the JSON object. It supports two special characters:
-
- - `.` Separates attribute references.
- - `*` Matches all attribute names
-
-Examples:
-
-```
-name           => 'Bob'
-location       => {state: 'Texas', city: 'Austin'}
-location.state => 'Texas'
-location.*     => ['Texas', 'Austin']
-friends        => [{name: 'Alice'}, {name: 'Carla'}]
-friends.*      => [{name: 'Alice'}, {name: 'Carla'}]
-friends.0      => {name: 'Alice'}
-friends.0.name => 'Alice'
-friends.1.name => 'Carla'
-friends.*.name => ['Alice', 'Carla']
-```
-
-Input object:
-
-```
-{
-  name: 'Bob',
-  location: {
-    state: 'Texas',
-    city: 'Austin'
-  },
-  friends: [
-    {name: 'Alice'},
-    {name: 'Carla'}
-  ]
-}
-```
-
 This path-language is intended to be so simple that an implementation can be written in less than twenty lines of code.
-
-## API
-
-### jlz.checkSupport()
-
-TODO document more
-
-### jlz.getSchemaFor()
-
-TODO document more
-
-```js
-jlz.getSchemaFor(doc, 'text') // => 'bll-fritter'
-jlz.getSchemaFor(doc, 'content') // => 'https://www.w3.org/ns/activitystreams'
-```
-
-### jlz.iterate()
-
-TODO document more
-
-```js
-jlz.iterate(doc, 'https://www.w3.org/ns/activitystreams', (key, value, path) => {
-  // example values for {"inReplyTo": {"summary": "Previous note"}}
-  console.log(key) // => 'summary'
-  console.log(path) // => 'inReplyTo.summary' 
-  console.log(value) // => 'Previous note'
-})
-```
 
 
 
