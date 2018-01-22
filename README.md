@@ -53,11 +53,11 @@ Most attributes in this object are part of the `"alice-calendar-app"` vocabulary
 }
 ```
 
-This JSON also uses the `"required": true` flag on the `"bob-rsvps"` vocabulary. See ["How do I avoid fatal ambiguities?"](#how-do-i-avoid-fatal-ambiguities) for more information about this field.
+This JSON also uses the `"required": true` flag on the `"bob-rsvps"` vocabulary. See ["Vocabulary metadata"](#vocabulary-metadata) for more information.
 
 ## API
 
-### jlz.checkSupport()
+### jlz.detectSupport()
 
 TODO document more
 
@@ -131,7 +131,7 @@ If a string value is given in `@schema`, it will expand to an object with the de
 }
 ```
 
-**name**. The name is the only required attribute. It may be any string value, including URLs. You should try to use long and non-generic names to avoid accidental collisions. For instance, instead of just `'status-update'`, you should prepend your org name, ie `'genericorp-status-update'`.
+**name**. The name is the only required attribute. It may be any string value, including URLs. You should try to use long and non-generic names to avoid accidental collisions. For instance, instead of just `'status-update'`, you should prepend your org name, eg `'genericorp-status-update'`.
 
 You should use a URL for the name if you plan to publish and maintain documentation at the location. If not, then you should use a string that's unique enough that it will be easy to search against (and therefore discover the docs via a search engine).
 
@@ -141,14 +141,14 @@ When multiple attribute paths match, the most specific (that is, longest) will b
 
 If `attrs` is set to `undefined`, then the vocabulary will be used as the default vocabulary for any attribute that does not have an explicitly-set vocab. Only the first vocabulary-object with an undefined `attrs` will be the default.
 
-**required**. If true, the vocabulary must be supported by the reading application for the JSON to have meaning. An application which does not support a required vocab must not make regular use of the input JSON.
+**required**. If true, the vocabulary must be supported by the reading application for the JSON to have meaning. An application which does not support a required vocab must not use the input JSON.
 
 ### Attribute Paths
 
 The "Attribute Path" is a very simple language for identifying attributes within the JSON object. It supports two special characters:
 
  - `.` Separates attribute references.
- - `*` Matches all attribute names
+ - `*` Wildcard. Matches all attribute names
 
 Examples:
 
@@ -195,21 +195,21 @@ Applications should validate their input JSON by checking the structure. Tools s
 
 Sometimes there are competing vocabularies that encode the same data. If you think you can still use the data, you can transform the data to fit the vocabulary/structure you use. This is sometimes called "munging" the data.
 
-For example, suppose you have two "RSVP" vocabularies.
+For example, suppose you have two "RSVP" vocabularies: `'bobs-rsvps'` and `'carlas-rsvps'`.
 
 The `'bobs-rsvps'` schema looks like:
 
-```
+```json
 {"rsvp": {"requested": true, "deadlineDate": "..."}}
 ```
 
 While the `'carlas-rsvps'` schema looks like:
 
-```
+```json
 {"rsvpIsRequested": true, "rsvpDeadline": "..."}
 ```
 
-We can convert from `'carlas-rsvps'` to `'bobs-rsvps'` by iterating over each attribute in the `'carlas-rsvps'` vocabulary and converting:
+We can convert from `'carlas-rsvps'` to `'bobs-rsvps'` by iterating over each attribute in the `'carlas-rsvps'` vocabulary:
 
 ```js
 obj.rsvp = obj.rsvp || {}
@@ -256,23 +256,41 @@ And here is what the output object would look like:
 }
 ```
 
-### Fatal ambiguity
+### Detecting schema support
 
-Ambiguous interpretations of data can sometimes result in critical mistakes. This is rare, but problematic enough that it should be actively avoided. Avoiding fatal ambiguity is one of the primary purposes of JSON-LZ.
+JSON-LZ includes a method `detectSupport()` for detecting the compatibility between your app and a JSON's declared schemas. This method is important for avoiding bugs.
+
+In most cases, partial support of a schema is not an issue, and apps can happily ignore the unsupported attributes, or perhaps warn the user about them if needed.
+
+However, there are rare cases where ambiguous interpretations of data will result in a critical mistake. This is called a "fatal ambiguity," and it's problematic enough that it should be actively avoided. Proper use of `detectSupport()` and JSON-LZ metadata can accomplish this.
 
 #### An example of "fatal ambiguity"
 
-In a social media application, a "status update" JSON might be extended to include an `"audience"` field. The field's goal would be to control the visibility of a message; for instance, "only show this status-update to Bob." If that field is not interpretted correctly by a client, the message would be visible to the wrong audiences. This is fatal ambiguity caused by partial support; the client understood the parts of the JSON that meant "status update" but it didn't understand the part that said "only show this to Bob."
+Suppose you have a social media application with "status update" JSONs, and one of the users' applications extends the JSON to include an `"audience"` field. The field's goal would be to control the visibility of a message; for instance, "only show this status-update to Bob." If that field is not interpretted correctly by a client, the message would be visible to the wrong audiences.
+
+This is fatal ambiguity caused by partial support; the client understood the parts of the JSON that meant "status update" but it didn't understand the part that said "only show this to Bob."
 
 #### Why does it matter?
 
-Fatal ambiguities make it difficult (if not impossible) for developers to freely extend their schemas. Because they have no way to signal the danger of partial support, they can only hope that all other clients will add full support in the near future. This will stifle developers and lead to bad user experiences.
+Fatal ambiguities make it difficult for developers to freely extend their schemas. Unless they can signal the danger of partial support, they can only hope that all other clients will add full support in the near future. This will stifle developers and lead to bad user experiences.
 
 #### How do I avoid fatal ambiguities?
 
 As a schema developer, you use the `"required": true` attribute in your vocabulary object. This signals that the JSON data would be *misunderstood* without fully supporting that vocabulary.
 
-As an app developer, you use the `checkSupport()` method on inputs and you pass in the list of vocabularies that you fully support. If the returned object has the `.incompatible` flag set to true, you should ignore the JSON, or perhaps save it in debugging storage for the user to diagnose.
+```js
+{
+  "@schema": {
+    {
+      "name": "my-critical-vocabulary",
+      "required": true // this schema MUST be supported!
+    }
+  }
+  // ...
+}
+```
+
+As an app developer, you use the `detectSupport()` method on inputs and you pass in the list of vocabularies that you fully support. If the returned object has the `.incompatible` flag set, you should ignore the JSON, or perhaps save it in debugging storage for the user to diagnose.
 
 ```js
 var support = JSONLZ.detectSupport(obj, ['alice-calendar-app', 'bob-rsvps'])
@@ -293,7 +311,7 @@ if (support.inconclusive) {
 
 #### How often should I use `"required": true` in my JSON?
 
-Very rarely! The only time you should include it is if the misinterpretation (or non-interpretation) of a field would create a major issue. In most cases, partial support of an object's vocabs will not create issues, so you should leave the vocab as unrequired.
+**Very rarely!** The only time you should include it is if the misinterpretation (or non-interpretation) of a field would create a major issue. In most cases, partial support of an object's vocabs will not create issues, so you should leave the vocab as unrequired.
 
 Required vocabs are a way to say "hide this object if you don't understand this vocab fully." Use it selectively.
 
