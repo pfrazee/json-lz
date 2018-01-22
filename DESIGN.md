@@ -20,10 +20,6 @@ As communities grow and integrate more applications around a shared dataset, the
 
 JSON-LZ should be fun and easy to use. Developers should not have to futz with strange keynames or read long documents like this one prior to writing their applications. Further, it should involve minimal tooling to leverage; an app should not have to import a library to support JSON-LZ.
 
-JSON-LD attempts to support "minimal tooling" by saying "all you need to do is put the @context field on your JSON." This fails in practice because schemas can take so many forms; depending on how the writing-app constructs the JSON-LD, some attributes may or may not have scopes in front of them (eg `foaf:relationship`). This creates a problem for apps that read the JSON, and it can only be solved with a "normalization" step (expand and contract into a predictable form).
-
-JSON-LZ avoids this by not using scoped attributes. All vocabulary is applied by selectors in the metadata object, and follows an easy-to-understand structure. The goal is to make a tool that developers *actually like to use* and which doesn't raise weird questions like "what the hell does @id mean."
-
 ### Post-hoc compatibility
 
 Compatability between schemas must be doable as an afterthought. Otherwise, then too much upfront coordination will be required and we won't get compatible data.
@@ -40,21 +36,13 @@ To address this, applications need a mechanism to identify ambiguities and fall 
 
 ### Arbitrary vocabulary identifiers
 
-Schema vocabularies may be identified by any string; URL identifiers are not required.
-
-**Reasoning**: Publishing a schema is time-consuming and requires the developer to maintain the document at the given URL, which most developers won't bother with. Developers should instead endeavor to use "unique-enough" identifiers which are unlikely to collide, and which will provide good information on a search.
-
-### Flexibility in vocabulary metadata
-
-JSON-LZ's philosophy is to solve all things with munging, and it'd be hypocritical if we didn't munge metadata too.
-
-JSON-LZ has a pluggable vocab-metadata processor which can be used to support alternative formats such as JSON-LD and [HAL](http://stateless.co/hal_specification.html). This can also be used by applications to detect vocabularies by duck-typing.
+Publishing a schema is time-consuming and requires the developer to maintain the document at the given URL, which most developers won't bother with. Developers should instead be allowed to use "unique-enough" identifiers which are unlikely to collide, and which will provide good information on a search.
 
 ## Why don't we just use JSON-LD?
 
 We considered this quite a bit! We tried designs that were partially compliant with JSON-LD, and designs which were subsets. Ultimately, we abandoned that approach because (naturally) we were worried about partial support creating ambiguities. Our current thinking is, by using a separate metadata format, we make it *easier* to interop with JSON-LD because the two formats can coexist (`@context` next to `@schema`).
 
-JSON-LD has more features than we need. The graph data model is not useful in our work and adds a lot of not-useful features. Also, the requirement to use URLs as vocabularity identifiers is very tedious for developers.
+JSON-LD has more features than we need. The graph data model is not useful in our work and adds a lot of complex features. Also, the requirement to use URLs as vocabularity identifiers is very tedious for developers.
 
 More importantly than those two issues, JSON-LD adds flexibility in the wrong places.
 
