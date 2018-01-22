@@ -8,6 +8,31 @@ Pronounced "JSON Lazy." A toolset for app developers to share JSON data between 
 
 **Status:** Work in progress.
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Background](#background)
+- [Example objects](#example-objects)
+  - [One vocabulary](#one-vocabulary)
+  - [Two vocabularies](#two-vocabularies)
+- [API](#api)
+  - [jlz.detectSupport()](#jlzdetectsupport)
+  - [jlz.getSchemaFor()](#jlzgetschemafor)
+  - [jlz.iterate()](#jlziterate)
+- [Vocabulary metadata](#vocabulary-metadata)
+  - [Attribute Paths](#attribute-paths)
+- [How to use JSON-LZ](#how-to-use-json-lz)
+  - [Validating objects](#validating-objects)
+  - [Transforming between vocabularies](#transforming-between-vocabularies)
+  - [Detecting schema support](#detecting-schema-support)
+    - [An example of "fatal ambiguity"](#an-example-of-fatal-ambiguity)
+    - [Why does it matter?](#why-does-it-matter)
+    - [How do I avoid fatal ambiguities?](#how-do-i-avoid-fatal-ambiguities)
+    - [How often should I use `"required": true` in my JSON?](#how-often-should-i-use-required-true-in-my-json)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Background
 
 JSON-LZ was created as part of [this discussion in the Beaker community](https://github.com/beakerbrowser/beaker/issues/820) between members of the p2p Web, microdata, and W3C Social WG communities. This toolset was largely inspired by [Robin Berjon](https://twitter.com/robinberjon)'s criticism of [JSON-LD](https://json-ld.org) titled [Don't Make Me Think (About Linked Data)](https://web.archive.org/web/20130814103818/http://berjon.com/blog/2013/06/linked-data.html).
