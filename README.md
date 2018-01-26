@@ -56,11 +56,7 @@ Schemas are optional. This JSON has no schema declaration.
 
 ### One schema
 
-A schema can help other developers read your data.
-
-If you want to declare a schema, all you need to do is add a `"schema"` attribute. The ID is up to you. It can be a URL pointing to documentation, or just a long unique string. (You want to make sure it's not likely to collide on accident.)
-
-This object uses the `"alice-allisons-calendar-app"` schema.
+A schema can help other developers read your data. This object uses the `"alice-allisons-calendar-app"` schema.
 
 ```json
 {
@@ -74,11 +70,7 @@ This object uses the `"alice-allisons-calendar-app"` schema.
 
 ### Two schemas
 
-Multiple schemas can be combined on one JSON.
-
-If you want to add new attributes to your JSON, you can add another schema. This is also easy -- you make `"schema"` an array, and you add a second schema description that "paints" the target attributes. It uses globs, so it's kind of like identifying files by paths.
-
-Most attributes in this object are part of the `"alice-allisons-calendar-app"` schema. The `"requested"` and `"deadlineDate"` attributes are part of the `"bob-bunsens-rsvps"` schema.
+Multiple schemas can be combined on one JSON. Most attributes in this object are part of the `"alice-allisons-calendar-app"` schema. The `"requested"` and `"deadlineDate"` attributes are part of the `"bob-bunsens-rsvps"` schema.
 
 ```json
 {
@@ -105,11 +97,14 @@ When you have the `"schema"` convention in your JSON, you can leverage the infor
 
 ### jlz.detectSupport(obj, schemaIds)
 
-This method is a simple way to detect whether you can handle the JSON. In a way, you're conversing with the JSON. You're saying, "I support these schemas, which schemas do you support?"
+This method is a simple way to detect whether your app can handle some JSON.
 
-Because of the `"required"` field (see ["Schema metadata"](#schema-metadata)) it's possible for the JSON to say, "Stop! You don't support me fully, and trying to use me would create problems!"
+There are 4 possible response states:
 
-If you support all of the JSON's declared schemas, you'll get `.full === true`. If you support some of them, you'll get `.partial === true`. If you don't support one of the required schemas, you'll get `.incompatible === true`. And if the JSON doesn't describe its schemas, you'll get `.inconclusive === true`.
+ - If you support all of the JSON's declared schemas, you'll get `.full === true`.
+ - If you support some of them, you'll get `.partial === true`.
+ - If you don't support one of the required schemas, you'll get `.incompatible === true`.
+ - And if the JSON doesn't declare its schemas, you'll get `.inconclusive === true`.
 
 ```js
 var support = JSONLZ.detectSupport(obj, ['alice-allisons-calendar-app', 'bob-bunsens-rsvps'])
