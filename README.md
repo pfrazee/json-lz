@@ -31,7 +31,6 @@ See [DESIGN.md](DESIGN.md) for more information.
   - [Transforming between schemas](#transforming-between-schemas)
   - [Detecting schema support](#detecting-schema-support)
     - [An example of "fatal ambiguity"](#an-example-of-fatal-ambiguity)
-    - [Why does it matter?](#why-does-it-matter)
     - [How do I avoid fatal ambiguities?](#how-do-i-avoid-fatal-ambiguities)
     - [How often should I use `"required": true` in my JSON?](#how-often-should-i-use-required-true-in-my-json)
 
@@ -99,12 +98,12 @@ When you have the `"schema"` convention in your JSON, you can leverage the infor
 
 This method is a simple way to detect whether your app can handle some JSON.
 
-There are 4 possible response states:
+There are 4 possible responses:
 
- - If you support all of the JSON's declared schemas, you'll get `.full === true`.
- - If you support some of them, you'll get `.partial === true`.
- - If you don't support one of the required schemas, you'll get `.incompatible === true`.
- - And if the JSON doesn't declare its schemas, you'll get `.inconclusive === true`.
+ - `.full === true` You support all of the JSON's declared schemas.
+ - `.partial === true` You support some of the declared schemas.
+ - `.incompatible === true` You don't support one of the required schemas.
+ - `.inconclusive === true` The JSON doesn't declare its schemas.
 
 ```js
 var support = JSONLZ.detectSupport(obj, ['alice-allisons-calendar-app', 'bob-bunsens-rsvps'])
@@ -303,21 +302,13 @@ And here is what the output object would look like:
 
 ### Detecting schema support
 
-JSON-LZ includes a method `detectSupport()` for detecting the compatibility between your app and a JSON's declared schemas. This method is important for avoiding bugs.
-
-In most cases, partial support of a schema is not an issue, and apps can happily ignore the unsupported attributes, or perhaps warn the user about them if needed.
-
-However, there are rare cases where ambiguous interpretations of data will result in a critical mistake. This is called a "fatal ambiguity," and it's problematic enough that it should be actively avoided. Proper use of `detectSupport()` and JSON-LZ metadata can accomplish this.
+JSON-LZ includes a method `detectSupport()` for detecting the compatibility between your app and a JSON's declared schemas. This method is important for avoiding "fatal ambiguity."
 
 #### An example of "fatal ambiguity"
 
 Suppose you have a social media application with "status update" JSONs, and one of the users' applications extends the JSON to include an `"audience"` field. The field's goal would be to control the visibility of a message; for instance, "only show this status-update to Bob." If that field is not interpretted correctly by a client, the message would be visible to the wrong audiences.
 
 This is fatal ambiguity caused by partial support; the client understood the parts of the JSON that meant "status update" but it didn't understand the part that said "only show this to Bob."
-
-#### Why does it matter?
-
-Fatal ambiguities make it difficult for developers to freely extend their schemas. Unless they can signal the danger of partial support, they can only hope that all other clients will add full support in the near future. This will stifle developers and lead to bad user experiences.
 
 #### How do I avoid fatal ambiguities?
 
