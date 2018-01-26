@@ -1,6 +1,6 @@
-# JSON LZ
+# JSON LaZy (LZ)
 
-Pronounced "JSON Lazy." A simple set of conventions for writing self-describing JSON, without the complexity of specs like JSON-LD. Includes tools to:
+Simple self-describing JSON. Includes tools to:
 
  - Identify the schemas of JSON documents,
  - Transform between schema-vocabularies, and
