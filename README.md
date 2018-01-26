@@ -25,6 +25,9 @@ See [DESIGN.md](DESIGN.md) for more information.
   - [jlz.getSchemaFor(obj, attrPath)](#jlzgetschemaforobj-attrpath)
   - [jlz.iterate(obj, schemaId, fn)](#jlziterateobj-schemaid-fn)
 - [Schema metadata](#schema-metadata)
+  - [name](#name)
+  - [attrs](#attrs)
+  - [required](#required)
   - [Attribute Paths](#attribute-paths)
 - [How to use JSON-LZ](#how-to-use-json-lz)
   - [Validating objects](#validating-objects)
@@ -175,17 +178,23 @@ If a string value is given in `schema`, it will expand to an object with the def
 }
 ```
 
-**name**. The name is the only required attribute. It may be any string value, including URLs. You should try to use long and non-generic names to avoid accidental collisions. For instance, instead of just `'status-update'`, you should prepend your org name, eg `'genericorp-status-update'`.
+### name
+
+The name is the only required attribute. It may be any string value, including URLs. You should try to use long and non-generic names to avoid accidental collisions. For instance, instead of just `'status-update'`, you should prepend your org name, eg `'genericorp-status-update'`.
 
 You should use a URL for the name if you plan to publish and maintain documentation at the location. If not, then you should use a string that's unique enough that it will be easy to search against (and therefore discover the docs via a search engine).
 
-**attrs**. The `attrs` attribute describes which attributes in the object use the schema. It should be an array of attribute paths. (See [Attribute Paths](#attribute-paths).)
+### attrs
+
+The `attrs` attribute describes which attributes in the object use the schema. It should be an array of attribute paths. (See [Attribute Paths](#attribute-paths).)
 
 When multiple attribute paths match, the most specific (that is, longest) will be used. Therefore, for the object `{foo:{bar:{baz: true}}}`, the path `foo.bar` will match everything inside for `bar` (include `baz`). However, if the path `foo.bar.baz` is present, then that will take precedent over the `foo.bar` selector. If there are multiple matching selectors of the same length, the first to match will be used (schema objects are processed in order).
 
 If `attrs` is set to `undefined`, then the schema will be used as the default schema for any attribute that does not have an explicitly-set schema. Only the first schema-object with an undefined `attrs` will be the default.
 
-**required**. If true, the schema must be supported by the reading application for the JSON to have meaning. An application which does not support a required schema must not use the input JSON.
+### required
+
+If true, the schema must be supported by the reading application for the JSON to have meaning. An application which does not support a required schema must not use the input JSON.
 
 ### Attribute Paths
 
