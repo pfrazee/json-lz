@@ -3,7 +3,7 @@
 Simple self-describing JSON. Includes tools to:
 
  - Identify the schemas of JSON documents,
- - Transform between schema-vocabularies, and
+ - Transform between schemas, and
  - Detect ambiguities and abort.
 
 See [DESIGN.md](DESIGN.md) for more information.
@@ -17,17 +17,18 @@ See [DESIGN.md](DESIGN.md) for more information.
 
 
 - [Example objects](#example-objects)
-  - [One vocabulary](#one-vocabulary)
-  - [Two vocabularies](#two-vocabularies)
+  - [No schema (Just JSON!)](#no-schema-just-json)
+  - [One schema](#one-schema)
+  - [Two schemas](#two-schemas)
 - [API](#api)
-  - [jlz.detectSupport()](#jlzdetectsupport)
-  - [jlz.getSchemaFor()](#jlzgetschemafor)
-  - [jlz.iterate()](#jlziterate)
-- [Vocabulary metadata](#vocabulary-metadata)
+  - [jlz.detectSupport(obj, schemaIds)](#jlzdetectsupportobj-schemaids)
+  - [jlz.getSchemaFor(obj, attrPath)](#jlzgetschemaforobj-attrpath)
+  - [jlz.iterate(obj, schemaId, fn)](#jlziterateobj-schemaid-fn)
+- [Schema metadata](#schema-metadata)
   - [Attribute Paths](#attribute-paths)
 - [How to use JSON-LZ](#how-to-use-json-lz)
   - [Validating objects](#validating-objects)
-  - [Transforming between vocabularies](#transforming-between-vocabularies)
+  - [Transforming between schemas](#transforming-between-schemas)
   - [Detecting schema support](#detecting-schema-support)
     - [An example of "fatal ambiguity"](#an-example-of-fatal-ambiguity)
     - [Why does it matter?](#why-does-it-matter)
@@ -38,15 +39,14 @@ See [DESIGN.md](DESIGN.md) for more information.
 
 ## Example objects
 
-Here are some JSON objects which demonstrate how JSON-LZ's metadata works.
+Lazy is a way to describe what schemas your JSON is using. It's an optional convention. It's helpful when you start working with other developers but don't have any way to coordinate with them (for instance, because you're not on a team together). By adding schema information, you give other developers hints about what your objects are.
 
-### One vocabulary
+### No schema (Just JSON!)
 
-All attributes in this object are part of the `"alice-calendar-app"` vocabulary.
+Of course, schemas are optional. Just JSON works fine:
 
 ```json
 {
-  "schema": "alice-calendar-app",
   "type": "event",
   "name": "JSON-LZ Working Group Meeting",
   "startDate": "2018-01-21T19:30:00.000Z",
@@ -54,15 +54,33 @@ All attributes in this object are part of the `"alice-calendar-app"` vocabulary.
 }
 ```
 
-### Two vocabularies
+### One schema
 
-Most attributes in this object are part of the `"alice-calendar-app"` vocabulary. The `"requested"` and `"deadlineDate"` attributes are part of the `"bob-rsvps"` vocabulary.
+If you want to declare a schema, all you need to do is add a `"schema"` attribute. The ID is up to you. It can be a URL pointing to documentation, or just a long unique string. (You want to make sure it's not likely to collide on accident.) Of course, if you're using an existing schema, you should use that schema's ID.
+
+This object uses the `"alice-a-allisons-calendar-app"` schema.
+
+```json
+{
+  "schema": "alice-a-allisons-calendar-app",
+  "type": "event",
+  "name": "JSON-LZ Working Group Meeting",
+  "startDate": "2018-01-21T19:30:00.000Z",
+  "endDate": "2018-01-21T20:30:00.000Z"
+}
+```
+
+### Two schemas
+
+If you want to add new attributes to your JSON, you can add another schema. This is also easy -- you make `"schema"` an array, and you add a second schema description that "paints" the target attributes. It uses globs, so it's kind of like identifying files by paths.
+
+Most attributes in this object are part of the `"alice-a-allisons-calendar-app"` schema. The `"requested"` and `"deadlineDate"` attributes are part of the `"bob-b-bunsens-rsvps"` schema.
 
 ```json
 {
   "schema": [
-    "alice-calendar-app",
-    {"name": "bob-rsvps", "attrs": "rsvp.*", "required": true}
+    "alice-a-allisons-calendar-app",
+    {"name": "bob-b-bunsens-rsvps", "attrs": "rsvp.*", "required": true}
   ],
   "type": "event",
   "name": "JSON-LZ Working Group Meeting",
@@ -75,24 +93,30 @@ Most attributes in this object are part of the `"alice-calendar-app"` vocabulary
 }
 ```
 
-This JSON also uses the `"required": true` flag on the `"bob-rsvps"` vocabulary. See ["Vocabulary metadata"](#vocabulary-metadata) for more information.
+This JSON also uses the `"required": true` flag on the `"bob-b-bunsens-rsvps"` schema. See ["Schema metadata"](#schema-metadata) for more information.
 
 ## API
 
-### jlz.detectSupport()
+When you have the `"schema"` convention in your JSON, you can leverage the information to run some helpful operations.
 
-TODO document more
+### jlz.detectSupport(obj, schemaIds)
+
+This method is a simple way to detect whether you can handle the JSON. In a way, you're conversing with the JSON. You're saying, "I support these schemas, which schemas do you support?"
+
+Because of the `"required"` field (see ["Schema metadata"](#schema-metadata)) it's possible for the JSON to say, "Stop! You don't support me fully, and trying to use me would create problems!"
+
+If you support all of the JSON's declared schemas, you'll get `.full === true`. If you support some of them, you'll get `.partial === true`. If you don't support one of the required schemas, you'll get `.incompatible === true`. And if the JSON doesn't describe its schemas, you'll get `.inconclusive === true`.
 
 ```js
-var support = JSONLZ.detectSupport(obj, ['alice-calendar-app', 'bob-rsvps'])
+var support = JSONLZ.detectSupport(obj, ['alice-a-allisons-calendar-app', 'bob-b-bunsens-rsvps'])
 if (support.full) {
   // 100% supported
 }
 if (support.partial) {
-  // some vocabs are missing but should work fine
+  // some schemas are missing but should work fine
 }
 if (support.incompatible) {
-  // unable to process object because required vocabs are missing
+  // unable to process object because required schemas are missing
   // (in practice this is the only result we MUST worry about)
 }
 if (support.inconclusive) {
@@ -100,18 +124,18 @@ if (support.inconclusive) {
 }
 ```
 
-### jlz.getSchemaFor()
+### jlz.getSchemaFor(obj, attrPath)
 
-TODO document more
+This helper lets you find the schema for a given attribute. If the JSON describes its own schema, you'll be given an identifier.
 
 ```js
 jlz.getSchemaFor(doc, 'text') // => 'bll-fritter'
 jlz.getSchemaFor(doc, 'content') // => 'https://www.w3.org/ns/activitystreams'
 ```
 
-### jlz.iterate()
+### jlz.iterate(obj, schemaId, fn)
 
-TODO document more
+This helper finds all attributes in the JSON of a given schema. It will iterate each of the attribute, calling `fn` with identifying information.
 
 ```js
 jlz.iterate(doc, 'https://www.w3.org/ns/activitystreams', (key, value, path) => {
@@ -122,18 +146,18 @@ jlz.iterate(doc, 'https://www.w3.org/ns/activitystreams', (key, value, path) => 
 })
 ```
 
-## Vocabulary metadata
+## Schema metadata
 
-The JSON-LZ metadata is placed in the toplevel `"schema"` attribute. It is an array of objects which describe the vocabularies of the attributes.
+The JSON-LZ metadata is placed in the toplevel `"schema"` attribute. It is an array of objects which describe the schemas of the attributes.
 
 ```js
 {
-  "schema": [/* your schema vocab objects */],
+  "schema": [/* your schema objects */],
   /* the rest of the data */
 }
 ```
 
-The values in the `"schema"` array are called "vocabulary objects." They follow the following schema:
+The values in the `"schema"` array are called "schema objects." They follow the following schema:
 
 ```
 {
@@ -143,11 +167,11 @@ The values in the `"schema"` array are called "vocabulary objects." They follow 
 }
 ```
 
-If a string value is given in `schema`, it will expand to an object with the default values. For instance, the string 'foo-vocab' will expand to the following object:
+If a string value is given in `schema`, it will expand to an object with the default values. For instance, the string 'foo-schema' will expand to the following object:
 
 ```js
 {
-  name: 'foo-vocab',
+  name: 'foo-schema',
   attrs: undefined,
   required: false
 }
@@ -157,13 +181,13 @@ If a string value is given in `schema`, it will expand to an object with the def
 
 You should use a URL for the name if you plan to publish and maintain documentation at the location. If not, then you should use a string that's unique enough that it will be easy to search against (and therefore discover the docs via a search engine).
 
-**attrs**. The `attrs` attribute describes which attributes in the object use the vocabulary. It should be an array of attribute paths. (See [Attribute Paths](#attribute-paths).)
+**attrs**. The `attrs` attribute describes which attributes in the object use the schema. It should be an array of attribute paths. (See [Attribute Paths](#attribute-paths).)
 
-When multiple attribute paths match, the most specific (that is, longest) will be used. Therefore, for the object `{foo:{bar:{baz: true}}}`, the path `foo.bar` will match everything inside for `bar` (include `baz`). However, if the path `foo.bar.baz` is present, then that will take precedent over the `foo.bar` selector. If there are multiple matching selectors of the same length, the first to match will be used (vocabulary objects are processed in order).
+When multiple attribute paths match, the most specific (that is, longest) will be used. Therefore, for the object `{foo:{bar:{baz: true}}}`, the path `foo.bar` will match everything inside for `bar` (include `baz`). However, if the path `foo.bar.baz` is present, then that will take precedent over the `foo.bar` selector. If there are multiple matching selectors of the same length, the first to match will be used (schema objects are processed in order).
 
-If `attrs` is set to `undefined`, then the vocabulary will be used as the default vocabulary for any attribute that does not have an explicitly-set vocab. Only the first vocabulary-object with an undefined `attrs` will be the default.
+If `attrs` is set to `undefined`, then the schema will be used as the default schema for any attribute that does not have an explicitly-set schema. Only the first schema-object with an undefined `attrs` will be the default.
 
-**required**. If true, the vocabulary must be supported by the reading application for the JSON to have meaning. An application which does not support a required vocab must not use the input JSON.
+**required**. If true, the schema must be supported by the reading application for the JSON to have meaning. An application which does not support a required schema must not use the input JSON.
 
 ### Attribute Paths
 
@@ -205,19 +229,19 @@ Input object:
 
 ## How to use JSON-LZ
 
-JSON-LZ uses metadata to "paint" the attributes of a JSON document with vocabulary definitions. Vocabs are then used to help identify the meanings of attributes, transform between different schemas, and fallback to safe defaults in the case ambiguous meaning. It is *not* an alternative to validation.
+JSON-LZ uses metadata to "paint" the attributes of a JSON document with schema declarations. Schemas are then used to help identify the meanings of attributes, transform between different schemas, and fallback to safe defaults in the case ambiguous meaning. It is *not* an alternative to validation.
 
 See ["When to use JSON-LZ"](DESIGN.md#when-to-use-json-lz) for more information about why JSON-LZ exists and when to use it in your app.
 
 ### Validating objects
 
-Applications should validate their input JSON by checking the structure. Tools such as [JSON-Schema](http://json-schema.org/) are useful for accomplishing this. JSON-LZ does not help with validation - it only helps with checking for ambiguities in declared vocabularies and for transforming between vocabs.
+Applications should validate their input JSON by checking the structure. Tools such as [JSON-Schema](http://json-schema.org/) are useful for accomplishing this. JSON-LZ does not help with validation - it only helps with checking for ambiguities in declared schemas and for transforming between schemas.
 
-### Transforming between vocabularies
+### Transforming between schemas
 
-Sometimes there are competing vocabularies that encode the same data. If you think you can still use the data, you can transform the data to fit the vocabulary/structure you use. This is sometimes called "munging" the data.
+Sometimes there are competing schemas that encode the same data. If you think you can still use the data, you can transform the data to fit the structure you use. This is sometimes called "munging" the data.
 
-For example, suppose you have two "RSVP" vocabularies: `'bobs-rsvps'` and `'carlas-rsvps'`.
+For example, suppose you have two "RSVP" schemas: `'bobs-rsvps'` and `'carlas-rsvps'`.
 
 The `'bobs-rsvps'` schema looks like:
 
@@ -231,7 +255,7 @@ While the `'carlas-rsvps'` schema looks like:
 {"rsvpIsRequested": true, "rsvpDeadline": "..."}
 ```
 
-We can convert from `'carlas-rsvps'` to `'bobs-rsvps'` by iterating over each attribute in the `'carlas-rsvps'` vocabulary:
+We can convert from `'carlas-rsvps'` to `'bobs-rsvps'` by iterating over each attribute in the `'carlas-rsvps'` schema:
 
 ```js
 obj.rsvp = obj.rsvp || {}
@@ -250,7 +274,7 @@ Here's an example object that would work with this technique:
 ```js
 {
   "schema": [
-    "alice-calendar-app",
+    "alice-a-allisons-calendar-app",
     {"name": "carlas-rsvps", "attrs": ["rsvpIsRequested", "rsvpDeadline"]}
   ],
   "type": "event",
@@ -298,13 +322,13 @@ Fatal ambiguities make it difficult for developers to freely extend their schema
 
 #### How do I avoid fatal ambiguities?
 
-As a schema developer, you use the `"required": true` attribute in your vocabulary object. This signals that the JSON data would be *misunderstood* without fully supporting that vocabulary.
+As a schema developer, you use the `"required": true` attribute in your schema object. This signals that the JSON data would be *misunderstood* without fully supporting that schema.
 
 ```js
 {
   "schema": {
     {
-      "name": "my-critical-vocabulary",
+      "name": "my-critical-schema",
       "required": true // this schema MUST be supported!
     }
   }
@@ -312,18 +336,18 @@ As a schema developer, you use the `"required": true` attribute in your vocabula
 }
 ```
 
-As an app developer, you use the `detectSupport()` method on inputs and you pass in the list of vocabularies that you fully support. If the returned object has the `.incompatible` flag set, you should ignore the JSON, or perhaps save it in debugging storage for the user to diagnose.
+As an app developer, you use the `detectSupport()` method on inputs and you pass in the list of schemas that you fully support. If the returned object has the `.incompatible` flag set, you should ignore the JSON, or perhaps save it in debugging storage for the user to diagnose.
 
 ```js
-var support = JSONLZ.detectSupport(obj, ['alice-calendar-app', 'bob-rsvps'])
+var support = JSONLZ.detectSupport(obj, ['alice-a-allisons-calendar-app', 'bob-b-bunsens-rsvps'])
 if (support.full) {
   // 100% supported
 }
 if (support.partial) {
-  // some vocabs are missing but should work fine
+  // some schemas are missing but should work fine
 }
 if (support.incompatible) {
-  // unable to process object because required vocabs are missing
+  // unable to process object because required schemas are missing
   // (in practice this is the only result we MUST worry about)
 }
 if (support.inconclusive) {
@@ -333,8 +357,8 @@ if (support.inconclusive) {
 
 #### How often should I use `"required": true` in my JSON?
 
-**Very rarely!** The only time you should include it is if the misinterpretation (or non-interpretation) of a field would create a major issue. In most cases, partial support of an object's vocabs will not create issues, so you should leave the vocab as unrequired.
+**Very rarely!** The only time you should include it is if the misinterpretation (or non-interpretation) of a field would create a major issue. In most cases, partial support of an object's schemas will not create issues, so you should leave the schema as unrequired.
 
-Required vocabs are a way to say "hide this object if you don't understand this vocab fully." Use it selectively.
+Required schemas are a way to say "hide this object if you don't understand this schema fully." Use it selectively.
 
 
