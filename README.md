@@ -14,7 +14,6 @@ See [DESIGN.md](DESIGN.md) for more information.
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 
-- [Background](#background)
 - [Example objects](#example-objects)
   - [One vocabulary](#one-vocabulary)
   - [Two vocabularies](#two-vocabularies)

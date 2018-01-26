@@ -7,6 +7,33 @@ Background reading:
  - [Don't Make Me Think (About Linked Data)](https://berjon.com/linked-data/)
  - [Beaker#820](https://github.com/beakerbrowser/beaker/issues/820)
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Principles](#principles)
+  - [Users cannot be forced](#users-cannot-be-forced)
+  - [Munging is better than planning](#munging-is-better-than-planning)
+  - [Ergonomics matter](#ergonomics-matter)
+- [When to use JSON-LZ](#when-to-use-json-lz)
+- [Requirements](#requirements)
+  - [Good ergonomics within Javascript](#good-ergonomics-within-javascript)
+  - [Post-hoc compatibility](#post-hoc-compatibility)
+  - [Well-defined fallback behaviors](#well-defined-fallback-behaviors)
+  - [Arbitrary vocabulary identifiers](#arbitrary-vocabulary-identifiers)
+- [Concerns](#concerns)
+  - [Fatal ambiguity](#fatal-ambiguity)
+  - [Keyname collisions](#keyname-collisions)
+  - [Validation assumptions](#validation-assumptions)
+- [Patterns](#patterns)
+  - [Duck-typing](#duck-typing)
+  - [Conventional `type` field](#conventional-type-field)
+  - [Conventional `schema` field](#conventional-schema-field)
+  - [Field iteration by namespace](#field-iteration-by-namespace)
+- [Why don't we just use JSON-LD?](#why-dont-we-just-use-json-ld)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Principles
 
 ### Users cannot be forced
