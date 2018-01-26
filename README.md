@@ -28,7 +28,7 @@ See [DESIGN.md](DESIGN.md) for more information.
   - [name](#name)
   - [attrs](#attrs)
   - [required](#required)
-  - [Attribute Paths](#attribute-paths)
+- [Attribute Paths](#attribute-paths)
 - [How to use JSON-LZ](#how-to-use-json-lz)
   - [Validating objects](#validating-objects)
   - [Transforming between schemas](#transforming-between-schemas)
@@ -196,7 +196,7 @@ If `attrs` is set to `undefined`, then the schema will be used as the default sc
 
 If true, the schema must be supported by the reading application for the JSON to have meaning. An application which does not support a required schema must not use the input JSON.
 
-### Attribute Paths
+## Attribute Paths
 
 The "Attribute Path" is a very simple language for identifying attributes within the JSON object. It supports two special characters:
 
