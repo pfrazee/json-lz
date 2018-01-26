@@ -7,6 +7,8 @@ Background reading:
  - [Don't Make Me Think (About Linked Data)](https://berjon.com/linked-data/)
  - [Beaker#820](https://github.com/beakerbrowser/beaker/issues/820)
 
+## Table of Contents
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
