@@ -1,10 +1,12 @@
 # JSON LZ
 
-Pronounced "JSON Lazy." A toolset for app developers to share JSON data between applications without creating conflicts in meaning. Includes tools to:
+Pronounced "JSON Lazy." A simple set of conventions for writing self-describing JSON, without the complexity of specs like JSON-LD. Includes tools to:
 
  - Identify the schemas of JSON documents,
  - Transform between schema-vocabularies, and
  - Detect ambiguities and abort.
+
+See [DESIGN.md](DESIGN.md) for more information.
 
 **Status:** Work in progress.
 
@@ -33,12 +35,6 @@ Pronounced "JSON Lazy." A toolset for app developers to share JSON data between 
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## Background
-
-JSON-LZ was created as part of [this discussion in the Beaker community](https://github.com/beakerbrowser/beaker/issues/820) between members of the p2p Web, microdata, and W3C Social WG communities. This toolset was largely inspired by [Robin Berjon](https://twitter.com/robinberjon)'s criticism of [JSON-LD](https://json-ld.org) titled [Don't Make Me Think (About Linked Data)](https://web.archive.org/web/20130814103818/http://berjon.com/blog/2013/06/linked-data.html).
-
-See [DESIGN.md](DESIGN.md) for more information.
-
 ## Example objects
 
 Here are some JSON objects which demonstrate how JSON-LZ's metadata works.
@@ -49,7 +45,7 @@ All attributes in this object are part of the `"alice-calendar-app"` vocabulary.
 
 ```json
 {
-  "@schema": "alice-calendar-app",
+  "schema": "alice-calendar-app",
   "type": "event",
   "name": "JSON-LZ Working Group Meeting",
   "startDate": "2018-01-21T19:30:00.000Z",
@@ -63,7 +59,7 @@ Most attributes in this object are part of the `"alice-calendar-app"` vocabulary
 
 ```json
 {
-  "@schema": [
+  "schema": [
     "alice-calendar-app",
     {"name": "bob-rsvps", "attrs": "rsvp.*", "required": true}
   ],
@@ -127,16 +123,16 @@ jlz.iterate(doc, 'https://www.w3.org/ns/activitystreams', (key, value, path) => 
 
 ## Vocabulary metadata
 
-The JSON-LZ metadata is placed in the toplevel `"@schema"` attribute. It is an array of objects which describe the vocabularies of the attributes.
+The JSON-LZ metadata is placed in the toplevel `"schema"` attribute. It is an array of objects which describe the vocabularies of the attributes.
 
 ```js
 {
-  "@schema": [/* your schema vocab objects */],
+  "schema": [/* your schema vocab objects */],
   /* the rest of the data */
 }
 ```
 
-The values in the `"@schema"` array are called "vocabulary objects." They follow the following schema:
+The values in the `"schema"` array are called "vocabulary objects." They follow the following schema:
 
 ```
 {
@@ -146,7 +142,7 @@ The values in the `"@schema"` array are called "vocabulary objects." They follow
 }
 ```
 
-If a string value is given in `@schema`, it will expand to an object with the default values. For instance, the string 'foo-vocab' will expand to the following object:
+If a string value is given in `schema`, it will expand to an object with the default values. For instance, the string 'foo-vocab' will expand to the following object:
 
 ```js
 {
@@ -252,7 +248,7 @@ Here's an example object that would work with this technique:
 
 ```js
 {
-  "@schema": [
+  "schema": [
     "alice-calendar-app",
     {"name": "carlas-rsvps", "attrs": ["rsvpIsRequested", "rsvpDeadline"]}
   ],
@@ -305,7 +301,7 @@ As a schema developer, you use the `"required": true` attribute in your vocabula
 
 ```js
 {
-  "@schema": {
+  "schema": {
     {
       "name": "my-critical-vocabulary",
       "required": true // this schema MUST be supported!
