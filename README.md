@@ -17,7 +17,7 @@ See [DESIGN.md](DESIGN.md) for more information.
 
 
 - [Example objects](#example-objects)
-  - [No schema (Just JSON!)](#no-schema-just-json)
+  - [No schema](#no-schema)
   - [One schema](#one-schema)
   - [Two schemas](#two-schemas)
 - [API](#api)
@@ -41,9 +41,9 @@ See [DESIGN.md](DESIGN.md) for more information.
 
 Lazy is a way to describe what schemas your JSON is using. It's an optional convention. It's helpful when you start working with other developers but don't have any way to coordinate with them (for instance, because you're not on a team together). By adding schema information, you give other developers hints about what your objects are.
 
-### No schema (Just JSON!)
+### No schema
 
-Of course, schemas are optional. Just JSON works fine:
+Schemas are optional. This JSON has no schema declaration.
 
 ```json
 {
@@ -56,13 +56,15 @@ Of course, schemas are optional. Just JSON works fine:
 
 ### One schema
 
-If you want to declare a schema, all you need to do is add a `"schema"` attribute. The ID is up to you. It can be a URL pointing to documentation, or just a long unique string. (You want to make sure it's not likely to collide on accident.) Of course, if you're using an existing schema, you should use that schema's ID.
+A schema can help other developers read your data.
 
-This object uses the `"alice-a-allisons-calendar-app"` schema.
+If you want to declare a schema, all you need to do is add a `"schema"` attribute. The ID is up to you. It can be a URL pointing to documentation, or just a long unique string. (You want to make sure it's not likely to collide on accident.)
+
+This object uses the `"alice-allisons-calendar-app"` schema.
 
 ```json
 {
-  "schema": "alice-a-allisons-calendar-app",
+  "schema": "alice-allisons-calendar-app",
   "type": "event",
   "name": "JSON-LZ Working Group Meeting",
   "startDate": "2018-01-21T19:30:00.000Z",
@@ -72,15 +74,17 @@ This object uses the `"alice-a-allisons-calendar-app"` schema.
 
 ### Two schemas
 
+Multiple schemas can be combined on one JSON.
+
 If you want to add new attributes to your JSON, you can add another schema. This is also easy -- you make `"schema"` an array, and you add a second schema description that "paints" the target attributes. It uses globs, so it's kind of like identifying files by paths.
 
-Most attributes in this object are part of the `"alice-a-allisons-calendar-app"` schema. The `"requested"` and `"deadlineDate"` attributes are part of the `"bob-b-bunsens-rsvps"` schema.
+Most attributes in this object are part of the `"alice-allisons-calendar-app"` schema. The `"requested"` and `"deadlineDate"` attributes are part of the `"bob-bunsens-rsvps"` schema.
 
 ```json
 {
   "schema": [
-    "alice-a-allisons-calendar-app",
-    {"name": "bob-b-bunsens-rsvps", "attrs": "rsvp.*", "required": true}
+    "alice-allisons-calendar-app",
+    {"name": "bob-bunsens-rsvps", "attrs": "rsvp.*", "required": true}
   ],
   "type": "event",
   "name": "JSON-LZ Working Group Meeting",
@@ -93,7 +97,7 @@ Most attributes in this object are part of the `"alice-a-allisons-calendar-app"`
 }
 ```
 
-This JSON also uses the `"required": true` flag on the `"bob-b-bunsens-rsvps"` schema. See ["Schema metadata"](#schema-metadata) for more information.
+This JSON also uses the `"required": true` flag on the `"bob-bunsens-rsvps"` schema. See ["Schema metadata"](#schema-metadata) for more information.
 
 ## API
 
@@ -108,7 +112,7 @@ Because of the `"required"` field (see ["Schema metadata"](#schema-metadata)) it
 If you support all of the JSON's declared schemas, you'll get `.full === true`. If you support some of them, you'll get `.partial === true`. If you don't support one of the required schemas, you'll get `.incompatible === true`. And if the JSON doesn't describe its schemas, you'll get `.inconclusive === true`.
 
 ```js
-var support = JSONLZ.detectSupport(obj, ['alice-a-allisons-calendar-app', 'bob-b-bunsens-rsvps'])
+var support = JSONLZ.detectSupport(obj, ['alice-allisons-calendar-app', 'bob-bunsens-rsvps'])
 if (support.full) {
   // 100% supported
 }
@@ -274,7 +278,7 @@ Here's an example object that would work with this technique:
 ```js
 {
   "schema": [
-    "alice-a-allisons-calendar-app",
+    "alice-allisons-calendar-app",
     {"name": "carlas-rsvps", "attrs": ["rsvpIsRequested", "rsvpDeadline"]}
   ],
   "type": "event",
@@ -339,7 +343,7 @@ As a schema developer, you use the `"required": true` attribute in your schema o
 As an app developer, you use the `detectSupport()` method on inputs and you pass in the list of schemas that you fully support. If the returned object has the `.incompatible` flag set, you should ignore the JSON, or perhaps save it in debugging storage for the user to diagnose.
 
 ```js
-var support = JSONLZ.detectSupport(obj, ['alice-a-allisons-calendar-app', 'bob-b-bunsens-rsvps'])
+var support = JSONLZ.detectSupport(obj, ['alice-allisons-calendar-app', 'bob-bunsens-rsvps'])
 if (support.full) {
   // 100% supported
 }
