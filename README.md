@@ -49,7 +49,6 @@ Schemas are optional. This JSON has no schema declaration.
 
 ```json
 {
-  "type": "event",
   "name": "JSON-LZ Working Group Meeting",
   "startDate": "2018-01-21T19:30:00.000Z",
   "endDate": "2018-01-21T20:30:00.000Z"
@@ -58,12 +57,11 @@ Schemas are optional. This JSON has no schema declaration.
 
 ### One schema
 
-A schema can help other developers read your data. This object uses the `"alice-allisons-calendar-app"` schema.
+A schema can help other developers read your data. This object uses the `"alices-calendar-app"` schema.
 
 ```json
 {
-  "schema": "alice-allisons-calendar-app",
-  "type": "event",
+  "schema": "alices-calendar-app",
   "name": "JSON-LZ Working Group Meeting",
   "startDate": "2018-01-21T19:30:00.000Z",
   "endDate": "2018-01-21T20:30:00.000Z"
@@ -72,15 +70,14 @@ A schema can help other developers read your data. This object uses the `"alice-
 
 ### Two schemas
 
-Multiple schemas can be combined on one JSON. Most attributes in this object are part of the `"alice-allisons-calendar-app"` schema. The `"requested"` and `"deadlineDate"` attributes are part of the `"bob-bunsens-rsvps"` schema.
+Multiple schemas can be combined on one JSON. Most attributes in this object are part of the `"alices-calendar-app"` schema. The `"requested"` and `"deadlineDate"` attributes are part of the `"bobs-rsvps"` schema.
 
 ```json
 {
   "schema": [
-    "alice-allisons-calendar-app",
-    {"name": "bob-bunsens-rsvps", "attrs": "rsvp.*", "required": true}
+    "alices-calendar-app",
+    {"name": "bobs-rsvps", "attrs": "rsvp.*", "required": true}
   ],
-  "type": "event",
   "name": "JSON-LZ Working Group Meeting",
   "startDate": "2018-01-21T19:30:00.000Z",
   "endDate": "2018-01-21T20:30:00.000Z",
@@ -91,7 +88,7 @@ Multiple schemas can be combined on one JSON. Most attributes in this object are
 }
 ```
 
-This JSON also uses the `"required": true` flag on the `"bob-bunsens-rsvps"` schema. See ["Schema metadata"](#schema-metadata) for more information.
+This JSON also uses the `"required": true` flag on the `"bobs-rsvps"` schema. See ["Schema metadata"](#schema-metadata) for more information.
 
 ## API
 
@@ -109,7 +106,7 @@ There are 4 possible responses:
  - `.inconclusive === true` The JSON doesn't declare its schemas.
 
 ```js
-var support = JSONLZ.detectSupport(obj, ['alice-allisons-calendar-app', 'bob-bunsens-rsvps'])
+var support = JSONLZ.detectSupport(obj, ['alices-calendar-app', 'bobs-rsvps'])
 if (support.full) {
   // 100% supported
 }
@@ -281,10 +278,9 @@ Here's an example object that would work with this technique:
 ```js
 {
   "schema": [
-    "alice-allisons-calendar-app",
+    "alices-calendar-app",
     {"name": "carlas-rsvps", "attrs": ["rsvpIsRequested", "rsvpDeadline"]}
   ],
-  "type": "event",
   "name": "JSON-LZ Working Group Meeting",
   "startDate": "2018-01-21T19:30:00.000Z",
   "endDate": "2018-01-21T20:30:00.000Z",
@@ -298,7 +294,6 @@ And here is what the output object would look like:
 ```js
 {
   // ...
-  "type": "event",
   "name": "JSON-LZ Working Group Meeting",
   "startDate": "2018-01-21T19:30:00.000Z",
   "endDate": "2018-01-21T20:30:00.000Z",
@@ -338,7 +333,7 @@ As a schema developer, you use the `"required": true` attribute in your schema o
 As an app developer, you use the `detectSupport()` method on inputs and you pass in the list of schemas that you fully support. If the returned object has the `.incompatible` flag set, you should ignore the JSON, or perhaps save it in debugging storage for the user to diagnose.
 
 ```js
-var support = JSONLZ.detectSupport(obj, ['alice-allisons-calendar-app', 'bob-bunsens-rsvps'])
+var support = JSONLZ.detectSupport(obj, ['alices-calendar-app', 'bobs-rsvps'])
 if (support.full) {
   // 100% supported
 }
